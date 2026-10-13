@@ -808,6 +808,54 @@
       "buscar": "CONSTRAINT miembros_espacio_usuario_activo FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado)",
       "reemplazo": "CONSTRAINT miembros_espacio_usuario_activo FOREIGN KEY (usuario_id) REFERENCES usuarios (id)",
       "comando": "test:sql"
+    },
+    {
+      "id": "D01",
+      "regla": "La app no modifica ni borra versiones por privilegio",
+      "archivo": "migrations/0012_rol_aplicacion.sql",
+      "buscar": "REVOKE UPDATE, DELETE ON versiones FROM cuaderno_app;\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "D02",
+      "regla": "La app no reescribe actualizaciones Yjs por privilegio",
+      "archivo": "migrations/0012_rol_aplicacion.sql",
+      "buscar": "REVOKE UPDATE ON actualizaciones_documento FROM cuaderno_app;\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "D03",
+      "regla": "La app solo lee schema_migrations",
+      "archivo": "migrations/0012_rol_aplicacion.sql",
+      "buscar": "REVOKE INSERT, UPDATE, DELETE ON schema_migrations FROM cuaderno_app;\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "D04",
+      "regla": "Todas las tablas tienen privilegios definidos para la app",
+      "archivo": "migrations/0012_rol_aplicacion.sql",
+      "buscar": "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO cuaderno_app;",
+      "reemplazo": "GRANT SELECT, INSERT, UPDATE, DELETE ON usuarios TO cuaderno_app;",
+      "comando": "test:sql"
+    },
+    {
+      "id": "D05",
+      "regla": "env-init nunca cambia un valor existente de .env",
+      "archivo": "scripts/lib/entorno.mjs",
+      "buscar": "!existentes.has(m[1])",
+      "reemplazo": "true",
+      "comando": "test:unit"
+    },
+    {
+      "id": "D06",
+      "regla": "env-init genera las contraseñas vacías",
+      "archivo": "scripts/lib/entorno.mjs",
+      "buscar": "clave.endsWith('PASSWORD')",
+      "reemplazo": "false",
+      "comando": "test:unit"
     }
   ]
 }

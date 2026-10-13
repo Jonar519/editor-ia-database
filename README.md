@@ -36,10 +36,16 @@ Bases lógicas de Redis: 0 = desarrollo, 1 = pruebas, 2 = E2E.
 
 ```bat
 npm ci
-scripts\env-init.bat
 scripts\db-up.bat
 scripts\db-migrate.bat dev
 ```
+
+`db-up.bat` genera `.env` por sí solo la primera vez, con una contraseña local aleatoria de 24 bytes, así que el bloque se puede reproducir en cualquier computador sin pasos manuales. Si `.env` ya existe, no lo toca.
+
+**Ojo:** Postgres fija la contraseña cuando crea el volumen. Si borras `.env` pero conservas el volumen, la contraseña nueva no coincidirá. En ese caso tienes dos opciones:
+
+- recuperar tu `.env` anterior, o
+- recrear la base desde cero con `docker compose down -v`, que **borra los datos locales**.
 
 ## Scripts
 
@@ -47,8 +53,8 @@ Todos los `.bat` están en `scripts\` y se pueden ejecutar desde cualquier carpe
 
 | Script | Qué hace |
 |---|---|
-| `env-init.bat` | Crea `.env` con una contraseña local aleatoria. No sobrescribe uno existente. |
-| `db-up.bat` / `db-down.bat` | Levanta (esperando el healthcheck) o detiene los contenedores. Los datos se conservan. |
+| `env-init.bat` | Crea `.env` con una contraseña local aleatoria. No sobrescribe uno existente. `db-up.bat` lo llama automáticamente. |
+| `db-up.bat` / `db-down.bat` | `db-up.bat` crea `.env` si falta y levanta los contenedores esperando el healthcheck. `db-down.bat` los detiene. Los datos se conservan. |
 | `db-migrate.bat dev\|test [--estado]` | Aplica las migraciones pendientes, o solo muestra su estado. |
 | `db-test.bat [filtro]` | Pruebas Vitest (unitarias e integración) y pruebas SQL. |
 | `db-huella.bat tomar\|comparar <etiqueta>` | Huella de solo lectura de la base de desarrollo: filas por tabla y hash del esquema. |

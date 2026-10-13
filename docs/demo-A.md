@@ -11,13 +11,12 @@ cd /d "C:\Users\<tu-usuario>\...\editor-ia\editor-ia-database"
 
 ```bat
 npm ci
-scripts\env-init.bat
 scripts\db-up.bat
 ```
 
 **Qué debes ver:**
 
-- `.env creado con una contraseña local aleatoria.` (o `.env ya existe; no se modifica.`)
+- La primera vez: `.env creado con una contraseña local aleatoria.` Las siguientes veces no aparece, porque `.env` ya existe y no se toca.
 - `Container cuaderno_postgres Healthy` y `Container cuaderno_redis Healthy`
 
 Comprueba los puertos:
@@ -97,6 +96,8 @@ scripts\mutar.bat
 ```
 
 **Qué debes ver:** cada regla con `DETECTADA` y al final `Detectadas 19, sobreviven 0, equivalentes 0, errores 0 (de 19).`
+
+Toma unos 2 minutos.
 
 Para ver una sola mutación: `scripts\mutar.bat A01`.
 

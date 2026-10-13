@@ -1,6 +1,7 @@
 // Uso: node scripts/sql-test.mjs [filtro]
 // Recrea desde cero la base de pruebas (CUADERNO_TEST_DB, debe terminar en _test), aplica todas las
-// migraciones, instala las funciones de aserción (tests/sql/_prueba.sql) y corre tests/sql/*.test.sql.
+// migraciones, instala las funciones de aserción (tests/sql/_prueba.sql) y los demás apoyos
+// (tests/sql/_*.sql, por ejemplo las fábricas de datos) y corre tests/sql/*.test.sql.
 // Nunca se conecta a la base de desarrollo.
 
 import { readdir, readFile } from 'node:fs/promises';
@@ -28,7 +29,11 @@ async function main() {
 
   const resultados = await conCliente(conn, async (c) => {
     await migrar(c, path.join(RAIZ, 'migrations'));
-    await c.query(await readFile(path.join(DIR_PRUEBAS, '_prueba.sql'), 'utf8'));
+    // Primero las aserciones (_prueba.sql); luego los demás apoyos (_*.sql), en orden.
+    const apoyos = (await readdir(DIR_PRUEBAS)).filter((a) => /^_.*\.sql$/.test(a) && a !== '_prueba.sql').sort();
+    for (const apoyo of ['_prueba.sql', ...apoyos]) {
+      await c.query(await readFile(path.join(DIR_PRUEBAS, apoyo), 'utf8'));
+    }
     const todos = [];
     for (const archivo of archivos) {
       const casos = dividirCasos(await readFile(path.join(DIR_PRUEBAS, archivo), 'utf8'), archivo);

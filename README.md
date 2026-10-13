@@ -55,7 +55,7 @@ Todos los `.bat` están en `scripts\` y se pueden ejecutar desde cualquier carpe
 |---|---|
 | `env-init.bat` | Crea `.env` con una contraseña local aleatoria. No sobrescribe uno existente. `db-up.bat` lo llama automáticamente. |
 | `db-up.bat` / `db-down.bat` | `db-up.bat` crea `.env` si falta y levanta los contenedores esperando el healthcheck. `db-down.bat` los detiene. Los datos se conservan. |
-| `db-migrate.bat dev\|test [--estado]` | Aplica las migraciones pendientes, o solo muestra su estado. |
+| `db-migrate.bat dev\|test [--estado]` | Aplica las migraciones pendientes, o solo muestra su estado. `--estado` usa una conexión de solo lectura. |
 | `db-test.bat [filtro]` | Pruebas Vitest (unitarias e integración) y pruebas SQL. |
 | `db-huella.bat tomar\|comparar <etiqueta>` | Huella de solo lectura de la base de desarrollo: filas por tabla y hash del esquema. |
 | `mutar.bat [id...]` | Pruebas de mutación del catálogo `mutations\catalogo.json`. |
@@ -70,10 +70,24 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 - cada uno se aplica en una transacción junto con su registro y su checksum;
 - una migración aplicada no se edita.
 
+## Esquema
+
+| Migración | Contenido |
+|---|---|
+| `0001_extensiones` | `vector` (pgvector) y `citext` |
+| `0002_usuarios` | cuentas (pendiente → activa → lápida) y funciones genéricas de integridad |
+| `0003_invitaciones` | alta solo por invitación, de un solo uso y 72 h como máximo |
+| `0004_sesiones` | sesiones (IP truncada) y tokens de refresco rotativos |
+| `0005_tokens_cuenta` | recuperación de contraseña (15 min) y cambio de correo (24 h) |
+| `0006_mfa` | TOTP cifrado, anti-replay, códigos de respaldo y "un admin activo tiene MFA" |
+| `0007_correo_simulado_geo` | buzón del correo simulado y rangos IP → ubicación aproximada |
+
+Cada regla, con su prueba y su mutación, está en [docs/esquema-identidad.md](docs/esquema-identidad.md).
+
 ## Pruebas
 
-- **SQL** (`tests/sql/*.test.sql`): cada caso empieza con `-- @test <nombre>` y corre en su propia transacción, que termina siempre en `ROLLBACK`. Las aserciones son las funciones del esquema `prueba`: `afirmar`, `afirmar_igual` y `afirmar_error` (exige el SQLSTATE exacto).
+- **SQL** (`tests/sql/*.test.sql`): cada caso empieza con `-- @test <nombre>` y corre en su propia transacción, que termina siempre en `ROLLBACK`. Las aserciones son las funciones del esquema `prueba`: `afirmar`, `afirmar_igual` y `afirmar_error` (exige el SQLSTATE exacto). Los apoyos `tests/sql/_*.sql` se cargan antes de las pruebas: primero las aserciones y luego las fábricas de datos ficticios.
 - **Vitest** (`tests/unitarias`, `tests/integracion`): las de integración corren contra Postgres real, en bases temporales `*_test`.
-- **Mutaciones** (`mutations/catalogo.json`): cada regla crítica se rompe a propósito y algún test tiene que fallar. Antes, una corrida base sin mutaciones tiene que pasar; si no pasa, el runner aborta. Una mutación declarada equivalente se informa aparte y no cuenta como detectada.
+- **Mutaciones** (`mutations/catalogo.json`): cada regla crítica se rompe a propósito y algún test tiene que fallar. Antes, una corrida base sin mutaciones tiene que pasar; si no pasa, el runner aborta. De cada mutación detectada se muestra como evidencia la primera prueba que falló. Una mutación declarada equivalente se informa aparte y no cuenta como detectada.
 
 Por seguridad, ninguna operación destructiva acepta un nombre de base que no termine en `_test`.

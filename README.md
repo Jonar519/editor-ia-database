@@ -40,7 +40,7 @@ scripts\db-up.bat
 scripts\db-migrate.bat dev
 ```
 
-`db-up.bat` genera `.env` por sí solo la primera vez, con contraseñas locales aleatorias de 24 bytes, así que el bloque se puede reproducir en cualquier computador sin pasos manuales. Si `.env` ya existe, no lo toca.
+`db-up.bat` genera `.env` por sí solo la primera vez, con contraseñas locales aleatorias de 24 bytes, así que el bloque se puede reproducir en cualquier computador sin pasos manuales. Si `.env` ya existe, solo le agrega las variables nuevas que falten; nunca cambia un valor existente.
 
 **Ojo:** Postgres fija la contraseña cuando crea el volumen. Si borras `.env` pero conservas el volumen, la contraseña nueva no coincidirá. En ese caso tienes dos opciones:
 

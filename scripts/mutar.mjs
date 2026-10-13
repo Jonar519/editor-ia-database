@@ -2,6 +2,7 @@
 // (mutations/catalogo.json), corre el comando de pruebas indicado y exige que falle.
 // Uso: node scripts/mutar.mjs [id...]
 //
+// Primero corre cada comando SIN mutaciones; si alguno falla, aborta (exit 4).
 // Resultados:
 //   DETECTADA     las pruebas fallaron con la mutación (lo esperado)
 //   SOBREVIVE     las pruebas pasaron con la regla rota: falta un test (hace fallar el comando)
@@ -60,6 +61,25 @@ if (elegidas.length === 0) {
   process.exit(2);
 }
 
+/** @param {string} comando */
+function correr(comando) {
+  const r = spawnSync('npm', ['run', comando], { cwd: RAIZ, shell: true, encoding: 'utf8', timeout: 600_000 });
+  return { codigo: r.status ?? 1, salida: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+}
+
+// Corrida base: sin mutaciones, cada comando debe pasar. Si no, un fallo por el entorno
+// (base caída, variable mal puesta) se contaría falsamente como "mutación detectada".
+for (const comando of new Set(elegidas.map((m) => m.comando))) {
+  process.stdout.write(`Base sin mutaciones: "npm run ${comando}"… `);
+  const base = correr(comando);
+  if (base.codigo !== 0) {
+    console.log('FALLA');
+    console.error(`\nABORTADO: las pruebas fallan SIN mutaciones; no se puede medir nada.\n${base.salida.slice(-2000)}`);
+    process.exit(4);
+  }
+  console.log('OK');
+}
+
 /** @type {{ m: Mutacion, estado: string }[]} */
 const resultados = [];
 for (const m of elegidas) {
@@ -77,8 +97,7 @@ for (const m of elegidas) {
   process.stdout.write(`${m.id} ${m.regla}\n   corriendo "npm run ${m.comando}"… `);
   let codigo;
   try {
-    const r = spawnSync('npm', ['run', m.comando], { cwd: RAIZ, shell: true, encoding: 'utf8', timeout: 600_000 });
-    codigo = r.status ?? 1;
+    codigo = correr(m.comando).codigo;
   } finally {
     restaurar();
   }

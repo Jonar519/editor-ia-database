@@ -97,7 +97,9 @@ scripts\mutar.bat
 
 **Qué debes ver:** cada regla con `DETECTADA` y al final `Detectadas 19, sobreviven 0, equivalentes 0, errores 0 (de 19).`
 
-Toma unos 2 minutos.
+Antes de mutar, el runner hace una corrida base sin mutaciones. Si esa corrida falla, aborta, porque una mutación solo cuenta como detectada si las pruebas pasaban sin ella.
+
+En mi máquina, `scripts\ci.bat` completo (mutaciones incluidas) tardó 75 s.
 
 Para ver una sola mutación: `scripts\mutar.bat A01`.
 

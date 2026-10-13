@@ -74,6 +74,6 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 
 - **SQL** (`tests/sql/*.test.sql`): cada caso empieza con `-- @test <nombre>` y corre en su propia transacción, que termina siempre en `ROLLBACK`. Las aserciones son las funciones del esquema `prueba`: `afirmar`, `afirmar_igual` y `afirmar_error` (exige el SQLSTATE exacto).
 - **Vitest** (`tests/unitarias`, `tests/integracion`): las de integración corren contra Postgres real, en bases temporales `*_test`.
-- **Mutaciones** (`mutations/catalogo.json`): cada regla crítica se rompe a propósito y algún test tiene que fallar. Una mutación declarada equivalente se informa aparte y no cuenta como detectada.
+- **Mutaciones** (`mutations/catalogo.json`): cada regla crítica se rompe a propósito y algún test tiene que fallar. Antes, una corrida base sin mutaciones tiene que pasar; si no pasa, el runner aborta. Una mutación declarada equivalente se informa aparte y no cuenta como detectada.
 
 Por seguridad, ninguna operación destructiva acepta un nombre de base que no termine en `_test`.

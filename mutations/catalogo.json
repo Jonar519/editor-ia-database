@@ -151,6 +151,342 @@
       "buscar": "CREATE EXTENSION IF NOT EXISTS vector;",
       "reemplazo": "",
       "comando": "test:sql"
+    },
+    {
+      "id": "A20",
+      "regla": "migrar crea la tabla de historial antes de leerla",
+      "archivo": "scripts/lib/migraciones.mjs",
+      "buscar": "    await cliente.query(DDL_HISTORIAL);\n    const pendientes",
+      "reemplazo": "    const pendientes",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A21",
+      "regla": "leerAplicadas (y migrate --estado) nunca escribe en la base",
+      "archivo": "scripts/lib/migraciones.mjs",
+      "buscar": "if (existe[0]?.existe !== true) return [];",
+      "reemplazo": "if (existe[0]?.existe !== true) { await cliente.query(DDL_HISTORIAL); return []; }",
+      "comando": "test:unit"
+    },
+    {
+      "id": "B01",
+      "regla": "Invitaciones: CHECK estado_usuario = 'pendiente'",
+      "archivo": "migrations/0003_invitaciones.sql",
+      "buscar": "  CONSTRAINT invitaciones_solo_cuentas_pendientes CHECK (estado_usuario = 'pendiente'),\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B02",
+      "regla": "Invitaciones: FK compuesta (usuario_id, estado_usuario) a usuarios (id, estado)",
+      "archivo": "migrations/0003_invitaciones.sql",
+      "buscar": "FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado) ON DELETE CASCADE",
+      "reemplazo": "FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B03",
+      "regla": "Sesiones: CHECK estado_usuario = 'activa'",
+      "archivo": "migrations/0004_sesiones.sql",
+      "buscar": "  CONSTRAINT sesiones_solo_cuentas_activas CHECK (estado_usuario = 'activa'),\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B04",
+      "regla": "Sesiones: FK compuesta (usuario_id, estado_usuario) a usuarios (id, estado)",
+      "archivo": "migrations/0004_sesiones.sql",
+      "buscar": "CONSTRAINT sesiones_usuario_activo FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado)",
+      "reemplazo": "CONSTRAINT sesiones_usuario_activo FOREIGN KEY (usuario_id) REFERENCES usuarios (id)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B05",
+      "regla": "Recuperación: CHECK estado_usuario = 'activa'",
+      "archivo": "migrations/0005_tokens_cuenta.sql",
+      "buscar": "  CONSTRAINT tokens_recuperacion_solo_cuentas_activas CHECK (estado_usuario = 'activa'),\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B06",
+      "regla": "Recuperación: FK compuesta (usuario_id, estado_usuario) a usuarios (id, estado)",
+      "archivo": "migrations/0005_tokens_cuenta.sql",
+      "buscar": "CONSTRAINT tokens_recuperacion_usuario_activo FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado)",
+      "reemplazo": "CONSTRAINT tokens_recuperacion_usuario_activo FOREIGN KEY (usuario_id) REFERENCES usuarios (id)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B07",
+      "regla": "Cambio de correo: CHECK estado_usuario = 'activa'",
+      "archivo": "migrations/0005_tokens_cuenta.sql",
+      "buscar": "  CONSTRAINT cambios_correo_solo_cuentas_activas CHECK (estado_usuario = 'activa'),\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B08",
+      "regla": "Cambio de correo: FK compuesta (usuario_id, estado_usuario) a usuarios (id, estado)",
+      "archivo": "migrations/0005_tokens_cuenta.sql",
+      "buscar": "CONSTRAINT cambios_correo_usuario_activo FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado)",
+      "reemplazo": "CONSTRAINT cambios_correo_usuario_activo FOREIGN KEY (usuario_id) REFERENCES usuarios (id)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B09",
+      "regla": "MFA: CHECK estado_usuario = 'activa'",
+      "archivo": "migrations/0006_mfa.sql",
+      "buscar": "  CONSTRAINT mfa_totp_solo_cuentas_activas CHECK (estado_usuario = 'activa'),\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B10",
+      "regla": "MFA: FK compuesta (usuario_id, estado_usuario) a usuarios (id, estado)",
+      "archivo": "migrations/0006_mfa.sql",
+      "buscar": "CONSTRAINT mfa_totp_usuario_activo FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado)",
+      "reemplazo": "CONSTRAINT mfa_totp_usuario_activo FOREIGN KEY (usuario_id) REFERENCES usuarios (id)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B11",
+      "regla": "Códigos de respaldo ligados al MFA (y por él a una cuenta activa)",
+      "archivo": "migrations/0006_mfa.sql",
+      "buscar": "FOREIGN KEY (usuario_id) REFERENCES mfa_totp (usuario_id) ON DELETE CASCADE",
+      "reemplazo": "FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B12",
+      "regla": "Tokens de refresco ligados a su sesión y al mismo usuario (FK compuesta)",
+      "archivo": "migrations/0004_sesiones.sql",
+      "buscar": "FOREIGN KEY (sesion_id, usuario_id) REFERENCES sesiones (id, usuario_id) ON DELETE CASCADE",
+      "reemplazo": "FOREIGN KEY (sesion_id) REFERENCES sesiones (id) ON DELETE CASCADE",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B13",
+      "regla": "Toda cuenta nace pendiente (alta solo por invitación)",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "  IF NEW.estado <> 'pendiente' THEN",
+      "reemplazo": "  IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B14",
+      "regla": "Transiciones de cuenta: solo pendiente→activa y activa→eliminada",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "     AND NOT ((OLD.estado = 'pendiente' AND NEW.estado = 'activa')",
+      "reemplazo": "     AND false AND NOT ((OLD.estado = 'pendiente' AND NEW.estado = 'activa')",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B15",
+      "regla": "Una cuenta pendiente no tiene contraseña",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "CONSTRAINT usuarios_pendiente_sin_contrasena CHECK (estado <> 'pendiente' OR",
+      "reemplazo": "CONSTRAINT usuarios_pendiente_sin_contrasena CHECK (true OR",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B16",
+      "regla": "Una cuenta activa tiene contraseña y fecha de activación",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "CONSTRAINT usuarios_activa_completa CHECK (estado <> 'activa' OR",
+      "reemplazo": "CONSTRAINT usuarios_activa_completa CHECK (true OR",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B17",
+      "regla": "La eliminación es una lápida sin datos personales",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "CONSTRAINT usuarios_eliminada_es_lapida CHECK (estado <> 'eliminada' OR",
+      "reemplazo": "CONSTRAINT usuarios_eliminada_es_lapida CHECK (true OR",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B18",
+      "regla": "La contraseña solo se guarda como hash scrypt",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "CHECK (hash_contrasena IS NULL OR hash_contrasena ~",
+      "reemplazo": "CHECK (true OR hash_contrasena ~",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B19",
+      "regla": "Correo único sin distinguir mayúsculas",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "CREATE UNIQUE INDEX usuarios_correo_unico",
+      "reemplazo": "CREATE INDEX usuarios_correo_unico",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B20",
+      "regla": "Solo un admin activo puede invitar",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "IF NEW.invitada_por IS NOT NULL AND NOT EXISTS (",
+      "reemplazo": "IF false AND NOT EXISTS (",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B21",
+      "regla": "Solo se borran cuentas pendientes; las demás se anonimizan",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "  IF OLD.estado <> 'pendiente' THEN",
+      "reemplazo": "  IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B22",
+      "regla": "creado_en lo fija la base",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "  NEW.creado_en := now();\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B23",
+      "regla": "Columnas de un solo uso (tokens usados, revocaciones) no cambian",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "IF antes -> columna <> 'null'::jsonb AND",
+      "reemplazo": "IF false AND",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B24",
+      "regla": "Los plazos solo se acortan",
+      "archivo": "migrations/0002_usuarios.sql",
+      "buscar": "IF NEW.creado_en > OLD.creado_en OR NEW.expira_en > OLD.expira_en THEN",
+      "reemplazo": "IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B25",
+      "regla": "Invitación: vigencia máxima de 72 h",
+      "archivo": "migrations/0003_invitaciones.sql",
+      "buscar": "interval '72 hours'",
+      "reemplazo": "interval '720 hours'",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B26",
+      "regla": "Tokens guardados como SHA-256 (32 bytes)",
+      "archivo": "migrations/0003_invitaciones.sql",
+      "buscar": "CONSTRAINT invitaciones_token_sha256 CHECK (octet_length(token_hash) = 32)",
+      "reemplazo": "CONSTRAINT invitaciones_token_sha256 CHECK (true)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B27",
+      "regla": "Sesión: vigencia máxima de 30 días",
+      "archivo": "migrations/0004_sesiones.sql",
+      "buscar": "CONSTRAINT sesiones_vigencia_30d CHECK (expira_en > creado_en AND expira_en <= creado_en + interval '30 days')",
+      "reemplazo": "CONSTRAINT sesiones_vigencia_30d CHECK (expira_en > creado_en AND expira_en <= creado_en + interval '300 days')",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B28",
+      "regla": "Sesión: revocación con motivo",
+      "archivo": "migrations/0004_sesiones.sql",
+      "buscar": "CONSTRAINT sesiones_revocacion_coherente CHECK ((revocada_en IS NULL) = (motivo_revocacion IS NULL))",
+      "reemplazo": "CONSTRAINT sesiones_revocacion_coherente CHECK (true)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B29",
+      "regla": "Sesión: IP truncada (/24 IPv4, /48 IPv6)",
+      "archivo": "migrations/0004_sesiones.sql",
+      "buscar": "CONSTRAINT sesiones_ip_truncada CHECK (ip_red IS NULL OR",
+      "reemplazo": "CONSTRAINT sesiones_ip_truncada CHECK (true OR",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B30",
+      "regla": "Refresco: como máximo un token vigente por sesión (rotación)",
+      "archivo": "migrations/0004_sesiones.sql",
+      "buscar": "CREATE UNIQUE INDEX tokens_refresco_uno_vigente_por_sesion",
+      "reemplazo": "CREATE INDEX tokens_refresco_uno_vigente_por_sesion",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B31",
+      "regla": "Refresco: no se emite para una sesión revocada",
+      "archivo": "migrations/0004_sesiones.sql",
+      "buscar": "WHERE id = NEW.sesion_id AND revocada_en IS NOT NULL",
+      "reemplazo": "WHERE false",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B32",
+      "regla": "Recuperación: vigencia máxima de 15 minutos",
+      "archivo": "migrations/0005_tokens_cuenta.sql",
+      "buscar": "interval '15 minutes'",
+      "reemplazo": "interval '150 minutes'",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B33",
+      "regla": "Recuperación: como máximo un token vigente por cuenta",
+      "archivo": "migrations/0005_tokens_cuenta.sql",
+      "buscar": "CREATE UNIQUE INDEX tokens_recuperacion_uno_vigente_por_cuenta",
+      "reemplazo": "CREATE INDEX tokens_recuperacion_uno_vigente_por_cuenta",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B34",
+      "regla": "MFA anti-replay: el último paso TOTP solo crece",
+      "archivo": "migrations/0006_mfa.sql",
+      "buscar": "IF OLD.ultimo_paso IS NOT NULL AND",
+      "reemplazo": "IF false AND",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B35",
+      "regla": "MFA: secreto cifrado inmutable",
+      "archivo": "migrations/0006_mfa.sql",
+      "buscar": "una_sola_vez('secreto_cifrado', 'iv', 'etiqueta', 'confirmado_en', 'creado_en')",
+      "reemplazo": "una_sola_vez('creado_en')",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B36",
+      "regla": "MFA: IV de AES-GCM de 12 bytes",
+      "archivo": "migrations/0006_mfa.sql",
+      "buscar": "CONSTRAINT mfa_totp_iv_gcm CHECK (octet_length(iv) = 12)",
+      "reemplazo": "CONSTRAINT mfa_totp_iv_gcm CHECK (true)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B37",
+      "regla": "Códigos de respaldo: como máximo 10",
+      "archivo": "migrations/0006_mfa.sql",
+      "buscar": ">= 10 THEN",
+      "reemplazo": ">= 11 THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B38",
+      "regla": "Un admin activo siempre tiene MFA confirmado",
+      "archivo": "migrations/0006_mfa.sql",
+      "buscar": "WHERE u.id = uid AND u.rol = 'admin' AND u.estado = 'activa'",
+      "reemplazo": "WHERE false AND u.id = uid",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B39",
+      "regla": "Correo simulado: retención máxima de 7 días",
+      "archivo": "migrations/0007_correo_simulado_geo.sql",
+      "buscar": "interval '7 days'",
+      "reemplazo": "interval '70 days'",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B40",
+      "regla": "Rangos IP sin solapamiento",
+      "archivo": "migrations/0007_correo_simulado_geo.sql",
+      "buscar": ",\n  CONSTRAINT rangos_ip_geo_sin_solapamiento EXCLUDE USING gist (red inet_ops WITH &&)",
+      "reemplazo": "",
+      "comando": "test:sql"
     }
   ]
 }

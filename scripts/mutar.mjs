@@ -37,6 +37,16 @@ function contar(texto, buscado) {
   return n;
 }
 
+/**
+ * Primera línea que identifica la prueba fallida (runner SQL: "FALLA <caso>"; Vitest: "FAIL"/"×"; error general).
+ * @param {string} salida
+ */
+function evidenciaDe(salida) {
+  const lineas = salida.split(/\r?\n/).map((l) => l.trim());
+  const caso = lineas.find((l) => l.startsWith('FALLA') || /^(FAIL|×)\s/.test(l));
+  return (caso ?? lineas.find((l) => l.startsWith('ERROR')) ?? '').slice(0, 160);
+}
+
 /** @type {{ ruta: string, original: string } | undefined} */
 let pendiente;
 function restaurar() {
@@ -95,9 +105,12 @@ for (const m of elegidas) {
   pendiente = { ruta, original };
   writeFileSync(ruta, original.replace(m.buscar, () => m.reemplazo));
   process.stdout.write(`${m.id} ${m.regla}\n   corriendo "npm run ${m.comando}"… `);
+  /** @type {number} */
   let codigo;
+  /** @type {string} */
+  let salida;
   try {
-    codigo = correr(m.comando).codigo;
+    ({ codigo, salida } = correr(m.comando));
   } finally {
     restaurar();
   }
@@ -108,6 +121,9 @@ for (const m of elegidas) {
   const detectada = codigo !== 0;
   const estado = detectada ? 'DETECTADA' : m.equivalente ? 'EQUIVALENTE' : 'SOBREVIVE';
   console.log(estado);
+  // Evidencia: la primera prueba que falló. Si fue la migración (ERROR: Falló ...), se ve aquí.
+  const evidencia = detectada ? evidenciaDe(salida) : '';
+  if (evidencia) console.log(`   evidencia: ${evidencia}`);
   resultados.push({ m, estado });
 }
 

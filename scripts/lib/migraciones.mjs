@@ -106,11 +106,14 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 )`;
 
 /**
+ * Solo lee: si la tabla de historial no existe, devuelve []. Nunca crea nada
+ * (se usa con conexiones de solo lectura, por ejemplo en "migrate dev --estado").
  * @param {ClienteSql} cliente
  * @returns {Promise<MigracionAplicada[]>}
  */
 export async function leerAplicadas(cliente) {
-  await cliente.query(DDL_HISTORIAL);
+  const { rows: existe } = await cliente.query("SELECT to_regclass('schema_migrations') IS NOT NULL AS existe");
+  if (existe[0]?.existe !== true) return [];
   const { rows } = await cliente.query('SELECT version, nombre, checksum FROM schema_migrations ORDER BY version');
   return rows.map((r) => ({ version: Number(r.version), nombre: String(r.nombre), checksum: String(r.checksum) }));
 }
@@ -127,6 +130,7 @@ export async function migrar(cliente, directorio, log = () => {}) {
   const archivos = await leerMigraciones(directorio);
   await cliente.query('SELECT pg_advisory_lock($1)', [CLAVE_BLOQUEO]);
   try {
+    await cliente.query(DDL_HISTORIAL);
     const pendientes = planificar(archivos, await leerAplicadas(cliente));
     /** @type {Migracion[]} */
     const hechas = [];

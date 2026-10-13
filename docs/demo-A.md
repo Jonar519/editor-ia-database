@@ -99,7 +99,7 @@ scripts\mutar.bat
 
 Antes de mutar, el runner hace una corrida base sin mutaciones. Si esa corrida falla, aborta, porque una mutación solo cuenta como detectada si las pruebas pasaban sin ella.
 
-En mi máquina, `scripts\ci.bat` completo (mutaciones incluidas) tardó 75 s.
+En mi máquina, `scripts\ci.bat` completo (mutaciones incluidas) tardó entre 75 y 82 s.
 
 Para ver una sola mutación: `scripts\mutar.bat A01`.
 

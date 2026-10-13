@@ -40,7 +40,7 @@ scripts\db-up.bat
 scripts\db-migrate.bat dev
 ```
 
-`db-up.bat` genera `.env` por sí solo la primera vez, con una contraseña local aleatoria de 24 bytes, así que el bloque se puede reproducir en cualquier computador sin pasos manuales. Si `.env` ya existe, no lo toca.
+`db-up.bat` genera `.env` por sí solo la primera vez, con contraseñas locales aleatorias de 24 bytes, así que el bloque se puede reproducir en cualquier computador sin pasos manuales. Si `.env` ya existe, no lo toca.
 
 **Ojo:** Postgres fija la contraseña cuando crea el volumen. Si borras `.env` pero conservas el volumen, la contraseña nueva no coincidirá. En ese caso tienes dos opciones:
 
@@ -53,8 +53,8 @@ Todos los `.bat` están en `scripts\` y se pueden ejecutar desde cualquier carpe
 
 | Script | Qué hace |
 |---|---|
-| `env-init.bat` | Crea `.env` con una contraseña local aleatoria. No sobrescribe uno existente. `db-up.bat` lo llama automáticamente. |
-| `db-up.bat` / `db-down.bat` | `db-up.bat` crea `.env` si falta y levanta los contenedores esperando el healthcheck. `db-down.bat` los detiene. Los datos se conservan. |
+| `env-init.bat` | Crea `.env` con contraseñas locales aleatorias. Si `.env` ya existe, le agrega solo las variables nuevas que falten, sin tocar las existentes. `db-up.bat` lo llama automáticamente. |
+| `db-up.bat` / `db-down.bat` | `db-up.bat` crea o completa `.env`, levanta los contenedores esperando el healthcheck y habilita el LOGIN de `cuaderno_app`. `db-down.bat` detiene los contenedores. Los datos se conservan. |
 | `db-migrate.bat dev\|test [--estado]` | Aplica las migraciones pendientes, o solo muestra su estado. `--estado` usa una conexión de solo lectura. |
 | `db-test.bat [filtro]` | Pruebas Vitest (unitarias e integración) y pruebas SQL. |
 | `db-huella.bat tomar\|comparar <etiqueta>` | Huella de solo lectura de la base de desarrollo: filas por tabla y hash del esquema. |
@@ -85,6 +85,29 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 | `0009_documentos` | documentos, permisos por documento, `rol_efectivo_documento` y aviso `NOTIFY` de permisos |
 | `0010_contenido` | actualizaciones Yjs, versiones de solo inserción con cadena de hash, comentarios y presencia |
 | `0011_ia` | embeddings aislados por espacio y acceso, búsqueda semántica y uso diario de IA |
+| `0012_rol_aplicacion` | rol `cuaderno_app` con privilegios mínimos para el backend |
+
+## Rol de aplicación (privilegios mínimos)
+
+Hay dos usuarios de base de datos:
+
+| Usuario | Para qué |
+|---|---|
+| `cuaderno` (`PGUSER`) | Dueño de las tablas. Solo lo usan las migraciones y las pruebas. |
+| `cuaderno_app` (`CUADERNO_APP_PASSWORD`) | El único usuario con el que se conecta el backend. |
+
+Al no ser dueño de las tablas, `cuaderno_app` **no puede**:
+
+- desactivar triggers;
+- cambiar el esquema;
+- hacer `TRUNCATE`;
+- usar `session_replication_role`;
+- escribir en `schema_migrations`;
+- modificar o borrar versiones, ni reescribir actualizaciones Yjs. Esto lo impide por privilegio, además del trigger.
+
+Las pruebas `tests/sql/0012_rol_aplicacion.test.sql` lo intentan una por una.
+
+`db-up.bat` habilita el LOGIN del rol y le pone la contraseña de `.env` (`scripts/usuario-app.mjs`). Los roles son de todo el servidor, no de una base, así que este paso no toca tablas ni datos.
 
 Cada regla, con su prueba y su mutación, está documentada en dos archivos:
 

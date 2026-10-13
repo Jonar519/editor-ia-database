@@ -1,16 +1,17 @@
 @echo off
 rem Levanta cuaderno_postgres (127.0.0.1:5435) y cuaderno_redis (127.0.0.1:6381) y espera a que esten sanos.
-rem Si no existe .env, lo genera primero con una contrasena local aleatoria (scripts\env-init.mjs).
+rem Crea o completa .env (scripts\env-init.mjs) y habilita el LOGIN del rol cuaderno_app.
 setlocal
 pushd "%~dp0.."
-if not exist ".env" (
-  node scripts\env-init.mjs
-  if errorlevel 1 (
-    popd
-    exit /b 1
-  )
-)
+node scripts\env-init.mjs
+if errorlevel 1 goto :fallo
 docker compose up -d --wait
-set "CODIGO=%ERRORLEVEL%"
+if errorlevel 1 goto :fallo
+node --env-file=.env scripts\usuario-app.mjs
+if errorlevel 1 goto :fallo
 popd
-exit /b %CODIGO%
+exit /b 0
+
+:fallo
+popd
+exit /b 1

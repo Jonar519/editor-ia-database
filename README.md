@@ -81,8 +81,15 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 | `0005_tokens_cuenta` | recuperación de contraseña (15 min) y cambio de correo (24 h) |
 | `0006_mfa` | TOTP cifrado, anti-replay, códigos de respaldo y "un admin activo tiene MFA" |
 | `0007_correo_simulado_geo` | buzón del correo simulado y rangos IP → ubicación aproximada |
+| `0008_espacios` | espacios de trabajo y miembros (propietario único, techo de rol de cuenta) |
+| `0009_documentos` | documentos, permisos por documento, `rol_efectivo_documento` y aviso `NOTIFY` de permisos |
+| `0010_contenido` | actualizaciones Yjs, versiones de solo inserción con cadena de hash, comentarios y presencia |
+| `0011_ia` | embeddings aislados por espacio y acceso, búsqueda semántica y uso diario de IA |
 
-Cada regla, con su prueba y su mutación, está en [docs/esquema-identidad.md](docs/esquema-identidad.md).
+Cada regla, con su prueba y su mutación, está documentada en dos archivos:
+
+- [docs/esquema-identidad.md](docs/esquema-identidad.md) (migraciones 0002–0007)
+- [docs/esquema-dominio.md](docs/esquema-dominio.md) (migraciones 0008–0011)
 
 ## Pruebas
 

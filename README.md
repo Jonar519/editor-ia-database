@@ -86,6 +86,7 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 | `0010_contenido` | actualizaciones Yjs, versiones de solo inserción con cadena de hash, comentarios y presencia |
 | `0011_ia` | embeddings aislados por espacio y acceso, búsqueda semántica y uso diario de IA |
 | `0012_rol_aplicacion` | rol `cuaderno_app` con privilegios mínimos para el backend |
+| `0013_compatibilidad_prisma` | reglas "uno vigente" como restricciones de exclusión, para que Prisma introspecte bien |
 
 ## Rol de aplicación (privilegios mínimos)
 

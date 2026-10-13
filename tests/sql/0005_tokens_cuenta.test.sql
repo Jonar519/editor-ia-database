@@ -42,7 +42,7 @@ BEGIN
   VALUES (uid, prueba.bytes(32), now() + interval '15 minutes') RETURNING id INTO t;
   PERFORM prueba.afirmar_error(format(
     $q$INSERT INTO tokens_recuperacion (usuario_id, token_hash, expira_en) VALUES (%L, prueba.bytes(32), now() + interval '15 minutes')$q$, uid),
-    '23505', 'dos vigentes');
+    '23P01', 'dos vigentes');
   UPDATE tokens_recuperacion SET usado_en = now() WHERE id = t;
   PERFORM prueba.afirmar_error(format($q$UPDATE tokens_recuperacion SET usado_en = NULL WHERE id = %L$q$, t), '23514', 'reusar token');
   PERFORM prueba.afirmar_error(format($q$UPDATE tokens_recuperacion SET usado_en = now() - interval '1 minute' WHERE id = %L$q$, t), '23514', 'cambiar usado_en');
@@ -88,7 +88,7 @@ BEGIN
   VALUES (uid, 'x@example.com', prueba.bytes(32), now() + interval '1 hour') RETURNING id INTO c;
   PERFORM prueba.afirmar_error(format(
     $q$INSERT INTO cambios_correo (usuario_id, correo_nuevo, token_hash, expira_en) VALUES (%L, 'y@example.com', prueba.bytes(32), now() + interval '1 hour')$q$, uid),
-    '23505', 'dos pendientes');
+    '23P01', 'dos pendientes');
   UPDATE cambios_correo SET confirmado_en = now() WHERE id = c;
   PERFORM prueba.afirmar_error(format($q$UPDATE cambios_correo SET confirmado_en = NULL WHERE id = %L$q$, c), '23514', 'desconfirmar');
   PERFORM prueba.afirmar_error(format($q$UPDATE cambios_correo SET correo_nuevo = 'z@example.com' WHERE id = %L$q$, c), '23514', 'cambiar el correo destino');

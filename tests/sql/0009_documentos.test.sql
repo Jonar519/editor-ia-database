@@ -32,7 +32,7 @@ DECLARE
 BEGIN
   SET CONSTRAINTS ALL IMMEDIATE;
   PERFORM prueba.miembro(e, bruno, 'editor');
-  PERFORM prueba.afirmar_error(format($q$SELECT prueba.permiso(%L, %L, 'propietario')$q$, d, bruno), '23505', 'segundo propietario');
+  PERFORM prueba.afirmar_error(format($q$SELECT prueba.permiso(%L, %L, 'propietario')$q$, d, bruno), '23P01', 'segundo propietario');
   PERFORM prueba.afirmar_error(format(
     $q$DELETE FROM permisos_documento WHERE documento_id = %L AND usuario_id = %L$q$, d, ana), '23514', 'quitar al propietario');
 END $$;

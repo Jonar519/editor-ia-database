@@ -39,7 +39,7 @@ El rol de cuenta `admin` administra cuentas e invitaciones. **No** da acceso al 
 | Regla | Mutación |
 |---|---|
 | Solo cuentas activas son miembros (CHECK + FK compuesta) | C39, C40 |
-| Exactamente un propietario por espacio (índice único + restricción diferida) | C37, C38 |
+| Exactamente un propietario por espacio (exclusión parcial + restricción diferida) | C37, C38 |
 | Un permiso de documento solo se da a miembros del espacio del documento (FK compuesta) | C24 |
 | El permiso no puede declarar un espacio distinto al del documento (FK compuesta) | C25 |
 | Exactamente un propietario por documento | C32, C33 |

@@ -3,6 +3,15 @@
 
 CREATE SCHEMA IF NOT EXISTS prueba;
 
+-- Las pruebas del rol de aplicación llaman a las aserciones como cuaderno_app (solo en la base de pruebas).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cuaderno_app') THEN
+    GRANT USAGE ON SCHEMA prueba TO cuaderno_app;
+  END IF;
+END
+$$;
+
 CREATE OR REPLACE FUNCTION prueba.afirmar(condicion boolean, mensaje text)
 RETURNS void LANGUAGE plpgsql AS $$
 BEGIN

@@ -25,7 +25,7 @@ DECLARE
   e uuid := prueba.espacio(ana);
 BEGIN
   SET CONSTRAINTS ALL IMMEDIATE;
-  PERFORM prueba.afirmar_error(format($q$SELECT prueba.miembro(%L, %L, 'propietario')$q$, e, bruno), '23505', 'segundo propietario');
+  PERFORM prueba.afirmar_error(format($q$SELECT prueba.miembro(%L, %L, 'propietario')$q$, e, bruno), '23P01', 'segundo propietario');
   PERFORM prueba.afirmar_error(format(
     $q$DELETE FROM miembros_espacio WHERE espacio_id = %L AND usuario_id = %L$q$, e, ana), '23514', 'quitar al único propietario');
   -- Transferir la propiedad sí se puede: en una transacción, revisado al final (como al COMMIT).

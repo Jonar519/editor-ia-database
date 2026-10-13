@@ -95,7 +95,7 @@ BEGIN
   INSERT INTO tokens_refresco (sesion_id, usuario_id, token_hash, expira_en) VALUES (s, ana, prueba.bytes(32), now() + interval '1 day');
   PERFORM prueba.afirmar_error(format(
     $q$INSERT INTO tokens_refresco (sesion_id, usuario_id, token_hash, expira_en) VALUES (%L, %L, prueba.bytes(32), now() + interval '1 day')$q$, s, ana),
-    '23505', 'dos tokens vigentes en la misma sesión');
+    '23P01', 'dos tokens vigentes en la misma sesión');
 END $$;
 
 -- @test refresco: no existe para una cuenta pendiente ni con la sesión de otra cuenta

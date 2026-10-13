@@ -2,7 +2,8 @@
 // (mutations/catalogo.json), corre el comando de pruebas indicado y exige que falle.
 // Uso: node scripts/mutar.mjs [id...]
 //
-// Primero corre cada comando SIN mutaciones; si alguno falla, aborta (exit 4).
+// Primero corre cada comando SIN mutaciones; si alguno falla, aborta (exit 4). Al final los vuelve a
+// correr sin mutaciones para dejar la base de pruebas en su estado correcto.
 // Resultados:
 //   DETECTADA     las pruebas fallaron con la mutación (lo esperado)
 //   SOBREVIVE     las pruebas pasaron con la regla rota: falta un test (hace fallar el comando)
@@ -127,6 +128,17 @@ for (const m of elegidas) {
   resultados.push({ m, estado });
 }
 
+// Corrida final sin mutaciones: las pruebas SQL recrean la base de pruebas, así que sin esto
+// cuaderno_test quedaría con el esquema de la ÚLTIMA mutación aplicada (y otros repos que la usan,
+// como el backend, verían un esquema roto). También confirma que todo sigue pasando tras restaurar.
+let finalOk = true;
+for (const comando of new Set(elegidas.map((m) => m.comando))) {
+  process.stdout.write(`Final sin mutaciones: "npm run ${comando}"… `);
+  const fin = correr(comando);
+  finalOk &&= fin.codigo === 0;
+  console.log(fin.codigo === 0 ? 'OK' : 'FALLA');
+}
+
 console.log('\nResumen de mutaciones');
 for (const { m, estado } of resultados) {
   console.log(`  ${estado.padEnd(11)} ${m.id}  ${m.regla}${estado === 'EQUIVALENTE' ? `\n              motivo: ${m.equivalente}` : ''}`);
@@ -135,4 +147,5 @@ const cuenta = (/** @type {string} */ e) => resultados.filter((r) => r.estado ==
 console.log(
   `\nDetectadas ${cuenta('DETECTADA')}, sobreviven ${cuenta('SOBREVIVE')}, equivalentes ${cuenta('EQUIVALENTE')}, errores ${cuenta('ERROR')} (de ${resultados.length}).`,
 );
-process.exit(cuenta('SOBREVIVE') + cuenta('ERROR') === 0 ? 0 : 1);
+if (!finalOk) console.error('ERROR: la corrida final sin mutaciones falló.');
+process.exit(cuenta('SOBREVIVE') + cuenta('ERROR') === 0 && finalOk ? 0 : 1);

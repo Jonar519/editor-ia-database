@@ -72,9 +72,10 @@ En estas dos tablas no repetí el CHECK + FK a `usuarios` a propósito. Habría 
 | Sesión: 30 días como máximo | CHECK | B27 |
 | Revocación de sesión con motivo válido | CHECK | B28 |
 | IP truncada: `/24` en IPv4, `/48` en IPv6 | CHECK + tipo `cidr` | B29 |
-| Rotación: como máximo un token de refresco vigente por sesión | índice único parcial | B30 |
+| Rotación: como máximo un token de refresco vigente por sesión | exclusión parcial (0013) | B30 |
 | No se emiten tokens de refresco para una sesión revocada | trigger | B31 |
-| Recuperación: 15 min como máximo y uno vigente por cuenta | CHECK + índice único parcial | B32, B33 |
+| Recuperación: 15 min como máximo y uno vigente por cuenta | CHECK + exclusión parcial (0013) | B32, B33 |
+| Cambio de correo: como máximo uno pendiente por cuenta | exclusión parcial (0013) | B41 |
 | Anti-replay TOTP: `ultimo_paso` solo crece | trigger `mfa_totp_anti_replay` | B34 |
 | Secreto MFA inmutable (reconfigurar = borrar y crear) | `una_sola_vez` | B35 |
 | AES-256-GCM: IV de 12 bytes y etiqueta de 16 | CHECK | B36 |
@@ -90,3 +91,11 @@ En estas dos tablas no repetí el CHECK + FK a `usuarios` a propósito. Habría 
 - **Bloqueo de cuenta.** `fallos_login` y `bloqueada_hasta` están en `usuarios`. La política progresiva (cuántos fallos y cuánto tiempo) es del backend (bloque E). La base solo exige que `fallos_login` no sea negativo.
 - **Correo simulado.** Guarda el cuerpo del correo, incluido el enlace con el token, porque es el "buzón" de la demo. Solo existe con el proveedor mock (producción no arranca con mock) y se borra a los 7 días como máximo.
 - **No implementado en este bloque.** No hay permisos de rol de base de datos (usuario de aplicación con privilegios mínimos): se evaluará en el bloque D. Tampoco hay política de reintentos de login por IP: es rate limiting en Redis, en el bloque E.
+
+## Nota: índices únicos parciales → restricciones de exclusión (migración 0013)
+
+Las reglas del tipo "como máximo uno vigente" nacieron como índices únicos parciales. En la migración 0013 pasaron a ser restricciones `EXCLUDE USING btree (col WITH =) WHERE (...)`.
+
+- **Qué hacen:** exactamente lo mismo. El único cambio visible es que la violación da `23P01` en lugar de `23505`.
+- **Por qué cambiaron:** con índices únicos parciales, `prisma db pull` (el backend usa Prisma como cliente) deducía relaciones uno a uno que no existen. Unas producían un esquema inválido y otras un modelo falso en silencio.
+- **Lo que se agregó:** `invitaciones` y `mfa_totp`, cuya relación sí es uno a uno, tienen además un `UNIQUE (usuario_id, estado_usuario)` redundante, que es lo que Prisma exige.

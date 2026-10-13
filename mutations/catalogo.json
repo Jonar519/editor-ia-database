@@ -403,9 +403,9 @@
     {
       "id": "B30",
       "regla": "Refresco: como máximo un token vigente por sesión (rotación)",
-      "archivo": "migrations/0004_sesiones.sql",
-      "buscar": "CREATE UNIQUE INDEX tokens_refresco_uno_vigente_por_sesion",
-      "reemplazo": "CREATE INDEX tokens_refresco_uno_vigente_por_sesion",
+      "archivo": "migrations/0013_compatibilidad_prisma.sql",
+      "buscar": "EXCLUDE USING btree (sesion_id WITH =) WHERE (usado_en IS NULL);",
+      "reemplazo": "EXCLUDE USING btree (sesion_id WITH =) WHERE (false);",
       "comando": "test:sql"
     },
     {
@@ -427,9 +427,9 @@
     {
       "id": "B33",
       "regla": "Recuperación: como máximo un token vigente por cuenta",
-      "archivo": "migrations/0005_tokens_cuenta.sql",
-      "buscar": "CREATE UNIQUE INDEX tokens_recuperacion_uno_vigente_por_cuenta",
-      "reemplazo": "CREATE INDEX tokens_recuperacion_uno_vigente_por_cuenta",
+      "archivo": "migrations/0013_compatibilidad_prisma.sql",
+      "buscar": "EXCLUDE USING btree (usuario_id WITH =) WHERE (usado_en IS NULL);",
+      "reemplazo": "EXCLUDE USING btree (usuario_id WITH =) WHERE (false);",
       "comando": "test:sql"
     },
     {
@@ -486,6 +486,14 @@
       "archivo": "migrations/0007_correo_simulado_geo.sql",
       "buscar": ",\n  CONSTRAINT rangos_ip_geo_sin_solapamiento EXCLUDE USING gist (red inet_ops WITH &&)",
       "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "B41",
+      "regla": "Cambio de correo: como máximo uno pendiente por cuenta",
+      "archivo": "migrations/0013_compatibilidad_prisma.sql",
+      "buscar": "EXCLUDE USING btree (usuario_id WITH =) WHERE (confirmado_en IS NULL);",
+      "reemplazo": "EXCLUDE USING btree (usuario_id WITH =) WHERE (false);",
       "comando": "test:sql"
     },
     {
@@ -740,9 +748,9 @@
     {
       "id": "C32",
       "regla": "Un solo propietario por documento",
-      "archivo": "migrations/0009_documentos.sql",
-      "buscar": "CREATE UNIQUE INDEX permisos_documento_un_propietario",
-      "reemplazo": "CREATE INDEX permisos_documento_un_propietario",
+      "archivo": "migrations/0013_compatibilidad_prisma.sql",
+      "buscar": "EXCLUDE USING btree (documento_id WITH =) WHERE (rol = 'propietario');",
+      "reemplazo": "EXCLUDE USING btree (documento_id WITH =) WHERE (false);",
       "comando": "test:sql"
     },
     {
@@ -780,9 +788,9 @@
     {
       "id": "C37",
       "regla": "Un solo propietario por espacio",
-      "archivo": "migrations/0008_espacios.sql",
-      "buscar": "CREATE UNIQUE INDEX miembros_espacio_un_propietario",
-      "reemplazo": "CREATE INDEX miembros_espacio_un_propietario",
+      "archivo": "migrations/0013_compatibilidad_prisma.sql",
+      "buscar": "EXCLUDE USING btree (espacio_id WITH =) WHERE (rol = 'propietario');",
+      "reemplazo": "EXCLUDE USING btree (espacio_id WITH =) WHERE (false);",
       "comando": "test:sql"
     },
     {
@@ -808,6 +816,54 @@
       "buscar": "CONSTRAINT miembros_espacio_usuario_activo FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado)",
       "reemplazo": "CONSTRAINT miembros_espacio_usuario_activo FOREIGN KEY (usuario_id) REFERENCES usuarios (id)",
       "comando": "test:sql"
+    },
+    {
+      "id": "D01",
+      "regla": "La app no modifica ni borra versiones por privilegio",
+      "archivo": "migrations/0012_rol_aplicacion.sql",
+      "buscar": "REVOKE UPDATE, DELETE ON versiones FROM cuaderno_app;\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "D02",
+      "regla": "La app no reescribe actualizaciones Yjs por privilegio",
+      "archivo": "migrations/0012_rol_aplicacion.sql",
+      "buscar": "REVOKE UPDATE ON actualizaciones_documento FROM cuaderno_app;\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "D03",
+      "regla": "La app solo lee schema_migrations",
+      "archivo": "migrations/0012_rol_aplicacion.sql",
+      "buscar": "REVOKE INSERT, UPDATE, DELETE ON schema_migrations FROM cuaderno_app;\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "D04",
+      "regla": "Todas las tablas tienen privilegios definidos para la app",
+      "archivo": "migrations/0012_rol_aplicacion.sql",
+      "buscar": "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO cuaderno_app;",
+      "reemplazo": "GRANT SELECT, INSERT, UPDATE, DELETE ON usuarios TO cuaderno_app;",
+      "comando": "test:sql"
+    },
+    {
+      "id": "D05",
+      "regla": "env-init nunca cambia un valor existente de .env",
+      "archivo": "scripts/lib/entorno.mjs",
+      "buscar": "!existentes.has(m[1])",
+      "reemplazo": "true",
+      "comando": "test:unit"
+    },
+    {
+      "id": "D06",
+      "regla": "env-init genera las contraseñas vacías",
+      "archivo": "scripts/lib/entorno.mjs",
+      "buscar": "clave.endsWith('PASSWORD')",
+      "reemplazo": "false",
+      "comando": "test:unit"
     }
   ]
 }

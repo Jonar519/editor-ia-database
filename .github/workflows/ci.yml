@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: lint · typecheck · tests · mutaciones · audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: cuaderno
+          # Contraseña desechable de un contenedor efímero de CI; no protege nada real.
+          POSTGRES_PASSWORD: cuaderno_ci
+          POSTGRES_DB: cuaderno
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd "pg_isready -U cuaderno -d cuaderno"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5435'
+      PGUSER: cuaderno
+      PGPASSWORD: cuaderno_ci
+      CUADERNO_DEV_DB: cuaderno
+      CUADERNO_TEST_DB: cuaderno_test
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run test:sql
+      - run: npm run mutate
+      - run: npm audit --audit-level=high
+
+  gitleaks:
+    name: gitleaks (historial completo)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: >-
+          docker run --rm -v "$PWD:/repo"
+          -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*'
+          zricethezav/gitleaks:v8.21.2 git /repo --no-banner --redact -v

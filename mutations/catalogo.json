@@ -1,0 +1,156 @@
+{
+  "mutaciones": [
+    {
+      "id": "A01",
+      "regla": "La guarda exige el sufijo _test en el nombre de la base",
+      "archivo": "scripts/lib/config.mjs",
+      "buscar": " || !nombre.endsWith(SUFIJO_PRUEBAS)",
+      "reemplazo": "",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A02",
+      "regla": "recrearBasePruebas aplica la guarda antes de DROP/CREATE",
+      "archivo": "scripts/lib/bases.mjs",
+      "buscar": "export async function recrearBasePruebas(conn, nombre) {\n  asegurarBaseDePruebas(nombre);",
+      "reemplazo": "export async function recrearBasePruebas(conn, nombre) {",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A03",
+      "regla": "borrarBasePruebas aplica la guarda antes de DROP",
+      "archivo": "scripts/lib/bases.mjs",
+      "buscar": "export async function borrarBasePruebas(conn, nombre) {\n  asegurarBaseDePruebas(nombre);",
+      "reemplazo": "export async function borrarBasePruebas(conn, nombre) {",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A04",
+      "regla": "Una migración aplicada y luego editada se rechaza (checksum)",
+      "archivo": "scripts/lib/migraciones.mjs",
+      "buscar": "if (local.checksum !== ap.checksum) {",
+      "reemplazo": "if (false) {",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A05",
+      "regla": "La numeración de archivos no admite huecos ni duplicados",
+      "archivo": "scripts/lib/migraciones.mjs",
+      "buscar": "if (mig.version !== esperada) {",
+      "reemplazo": "if (false) {",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A06",
+      "regla": "Un historial aplicado con huecos se rechaza",
+      "archivo": "scripts/lib/migraciones.mjs",
+      "buscar": "if (aplicadas.length !== maxAplicada) {",
+      "reemplazo": "if (false) {",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A07",
+      "regla": "El checksum normaliza CRLF a LF",
+      "archivo": "scripts/lib/migraciones.mjs",
+      "buscar": "update(sql.replace(/\\r\\n/g, '\\n'), 'utf8')",
+      "reemplazo": "update(sql, 'utf8')",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A08",
+      "regla": "SQL de la migración y su registro van en la misma transacción (BEGIN)",
+      "archivo": "scripts/lib/migraciones.mjs",
+      "buscar": "await cliente.query('BEGIN');",
+      "reemplazo": "",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A09",
+      "regla": "Una migración fallida se revierte (ROLLBACK)",
+      "archivo": "scripts/lib/migraciones.mjs",
+      "buscar": "await cliente.query('ROLLBACK');",
+      "reemplazo": "",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A10",
+      "regla": "Dos ejecuciones simultáneas se serializan con bloqueo consultivo",
+      "archivo": "scripts/lib/migraciones.mjs",
+      "buscar": "'SELECT pg_advisory_lock($1)'",
+      "reemplazo": "'SELECT $1::int'",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A11",
+      "regla": "La huella se toma con una conexión de solo lectura",
+      "archivo": "scripts/lib/bases.mjs",
+      "buscar": "options: '-c default_transaction_read_only=on'",
+      "reemplazo": "options: ''",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A12",
+      "regla": "La huella detecta cambios en el número de filas",
+      "archivo": "scripts/lib/huella.mjs",
+      "buscar": "else if (a !== d)",
+      "reemplazo": "else if (false)",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A13",
+      "regla": "La huella detecta cambios de esquema por sección",
+      "archivo": "scripts/lib/huella.mjs",
+      "buscar": "if (antes.secciones[seccion] !== despues.secciones[seccion])",
+      "reemplazo": "if (false)",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A14",
+      "regla": "Cada caso SQL termina en ROLLBACK (aislamiento entre casos)",
+      "archivo": "scripts/lib/pruebas-sql.mjs",
+      "buscar": "await cliente.query('ROLLBACK');",
+      "reemplazo": "await cliente.query('COMMIT');",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A15",
+      "regla": "El runner SQL sale con código distinto de 0 si un caso falla",
+      "archivo": "scripts/lib/pruebas-sql.mjs",
+      "buscar": "return resultados.every((r) => r.ok) ? 0 : 1;",
+      "reemplazo": "return 0;",
+      "comando": "test:unit"
+    },
+    {
+      "id": "A16",
+      "regla": "afirmar trata NULL como fallo",
+      "archivo": "tests/sql/_prueba.sql",
+      "buscar": "IF condicion IS NOT TRUE THEN",
+      "reemplazo": "IF condicion = false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "A17",
+      "regla": "afirmar_error exige el SQLSTATE exacto",
+      "archivo": "tests/sql/_prueba.sql",
+      "buscar": "ELSIF obtenido <> sqlstate_esperado THEN",
+      "reemplazo": "ELSIF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "A18",
+      "regla": "afirmar_error falla si la sentencia no da error",
+      "archivo": "tests/sql/_prueba.sql",
+      "buscar": "IF obtenido IS NULL THEN",
+      "reemplazo": "IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "A19",
+      "regla": "La migración 0001 instala pgvector",
+      "archivo": "migrations/0001_extensiones.sql",
+      "buscar": "CREATE EXTENSION IF NOT EXISTS vector;",
+      "reemplazo": "",
+      "comando": "test:sql"
+    }
+  ]
+}

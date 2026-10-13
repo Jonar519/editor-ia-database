@@ -1,0 +1,33 @@
+{
+  "name": "editor-ia-database",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Esquema de base de datos de Cuaderno: migraciones SQL numeradas, pruebas SQL y herramientas.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "npm run test:unit && npm run test:sql",
+    "test:unit": "node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run",
+    "test:sql": "node --env-file-if-exists=.env scripts/sql-test.mjs",
+    "migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
+    "huella": "node --env-file-if-exists=.env scripts/huella.mjs",
+    "mutate": "node scripts/mutar.mjs",
+    "env:init": "node scripts/env-init.mjs"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "eslint": "10.12.0",
+    "globals": "17.13.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.4"
+  }
+}

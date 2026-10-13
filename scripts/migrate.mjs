@@ -6,7 +6,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { conexion, nombreBaseDesarrollo, nombreBasePruebas } from './lib/config.mjs';
-import { conCliente } from './lib/bases.mjs';
+import { conCliente, conectarSoloLectura } from './lib/bases.mjs';
 import { leerAplicadas, leerMigraciones, migrar, planificar } from './lib/migraciones.mjs';
 
 const DIR_MIGRACIONES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'migrations');
@@ -21,12 +21,16 @@ async function main() {
   const conn = conexion(process.env, base);
 
   if (opcion === '--estado') {
-    await conCliente(conn, async (c) => {
+    // Solo lectura: consultar el estado nunca puede escribir en la base.
+    const c = await conectarSoloLectura(conn);
+    try {
       const aplicadas = await leerAplicadas(c);
       const pendientes = planificar(await leerMigraciones(DIR_MIGRACIONES), aplicadas);
       console.log(`Base ${base}: ${aplicadas.length} aplicadas, ${pendientes.length} pendientes.`);
       for (const p of pendientes) console.log(`  pendiente ${p.archivo}`);
-    });
+    } finally {
+      await c.end();
+    }
     return 0;
   }
 

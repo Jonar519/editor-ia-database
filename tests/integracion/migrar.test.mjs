@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { migrar } from '../../scripts/lib/migraciones.mjs';
+import { conectarSoloLectura } from '../../scripts/lib/bases.mjs';
+import { leerAplicadas, migrar } from '../../scripts/lib/migraciones.mjs';
 import { crearBaseTemporal, crearDirMigraciones } from './_bd.mjs';
 
 /** @type {(() => Promise<unknown>)[]} */
@@ -91,6 +92,18 @@ describe('migrar contra Postgres real', () => {
       await expect(migrar(c, dir)).rejects.toThrow(/cambió después de aplicarse/);
     } finally {
       await c.end();
+    }
+  });
+
+  it('leerAplicadas no crea nada: funciona con una conexión de solo lectura sobre una base vacía', async () => {
+    const { base } = await preparar({ '0001_a.sql': 'CREATE TABLE a (id int);' });
+    const lectura = await conectarSoloLectura(base.conn);
+    try {
+      expect(await leerAplicadas(lectura)).toEqual([]);
+      const { rows } = await lectura.query("SELECT to_regclass('schema_migrations') IS NULL AS ausente");
+      expect(rows[0].ausente).toBe(true);
+    } finally {
+      await lectura.end();
     }
   });
 

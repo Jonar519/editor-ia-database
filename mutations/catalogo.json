@@ -487,6 +487,327 @@
       "buscar": ",\n  CONSTRAINT rangos_ip_geo_sin_solapamiento EXCLUDE USING gist (red inet_ops WITH &&)",
       "reemplazo": "",
       "comando": "test:sql"
+    },
+    {
+      "id": "C01",
+      "regla": "Versiones de solo inserción: UPDATE y DELETE prohibidos",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "CREATE TRIGGER versiones_solo_insercion BEFORE UPDATE OR DELETE ON versiones\n  FOR EACH ROW EXECUTE FUNCTION versiones_solo_insercion();\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C02",
+      "regla": "Versiones de solo inserción: TRUNCATE prohibido",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "CREATE TRIGGER versiones_sin_truncate BEFORE TRUNCATE ON versiones\n  FOR EACH STATEMENT EXECUTE FUNCTION versiones_solo_insercion();\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C03",
+      "regla": "Una versión solo se borra junto con su documento (excepción acotada)",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "IF TG_OP = 'DELETE' AND NOT EXISTS (SELECT 1 FROM documentos WHERE id = OLD.documento_id) THEN",
+      "reemplazo": "IF TG_OP = 'DELETE' THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C04",
+      "regla": "Cadena de hash: cada versión encadena el hash de la anterior",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "NEW.hash_previo := coalesce(previa.hash, decode(repeat('00', 32), 'hex'));",
+      "reemplazo": "NEW.hash_previo := decode(repeat('00', 32), 'hex');",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C05",
+      "regla": "El hash de la versión cubre el contenido",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "    || sha256(convert_to(p_texto, 'UTF8'))\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C06",
+      "regla": "La base numera las versiones (el cliente no elige)",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "  NEW.numero := coalesce(previa.numero, 0) + 1;\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C07",
+      "regla": "La verificación recalcula el hash de cada versión",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "       OR v.hash <> hash_version(",
+      "reemplazo": "       OR false AND v.hash <> hash_version(",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C08",
+      "regla": "La verificación comprueba cada eslabón (hash_previo)",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "       OR v.hash_previo <> esperado_previo\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C09",
+      "regla": "Crear una versión exige permiso de escritura",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "    PERFORM exigir_escritura(NEW.creado_por, NEW.documento_id);\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C10",
+      "regla": "Un lector nunca escribe actualizaciones del documento",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "  PERFORM exigir_escritura(NEW.autor_id, NEW.documento_id);\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C11",
+      "regla": "Escribir exige rol editor o propietario (no lector)",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "NOT IN ('editor', 'propietario')",
+      "reemplazo": "NOT IN ('editor', 'propietario', 'lector')",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C12",
+      "regla": "Solo se restaura desde una versión del mismo documento",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "FOREIGN KEY (restaurada_de, documento_id) REFERENCES versiones (id, documento_id)",
+      "reemplazo": "FOREIGN KEY (restaurada_de) REFERENCES versiones (id)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C13",
+      "regla": "Versiones automáticas sin autor; manuales con autor",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "CONSTRAINT versiones_autor_segun_motivo CHECK ((motivo = 'automatica') = (creado_por IS NULL))",
+      "reemplazo": "CONSTRAINT versiones_autor_segun_motivo CHECK (true)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C14",
+      "regla": "Comentar exige acceso al documento",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "IF rol_efectivo_documento(NEW.autor_id, NEW.documento_id) IS NULL THEN",
+      "reemplazo": "IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C15",
+      "regla": "Una respuesta pertenece al documento de su hilo",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "FOREIGN KEY (padre_id, documento_id) REFERENCES comentarios (id, documento_id) ON DELETE CASCADE",
+      "reemplazo": "FOREIGN KEY (padre_id) REFERENCES comentarios (id) ON DELETE CASCADE",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C16",
+      "regla": "Sesión de edición: el rol registrado es el rol efectivo",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "  IF NEW.rol IS DISTINCT FROM rol_efectivo_documento(NEW.usuario_id, NEW.documento_id) THEN",
+      "reemplazo": "  IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C17",
+      "regla": "Sesión de edición: exige sesión de login viva",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "AND (revocada_en IS NOT NULL OR expira_en <= now())",
+      "reemplazo": "AND false",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C18",
+      "regla": "Sesión de edición: cuelga de una sesión de login del mismo usuario",
+      "archivo": "migrations/0010_contenido.sql",
+      "buscar": "FOREIGN KEY (sesion_id, usuario_id) REFERENCES sesiones (id, usuario_id) ON DELETE CASCADE",
+      "reemplazo": "FOREIGN KEY (sesion_id) REFERENCES sesiones (id) ON DELETE CASCADE",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C19",
+      "regla": "AISLAMIENTO: nadie indexa contenido de un documento sin acceso (trigger)",
+      "archivo": "migrations/0011_ia.sql",
+      "buscar": "  IF rol_efectivo_documento(NEW.indexado_por, NEW.documento_id) IS NULL THEN",
+      "reemplazo": "  IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C20",
+      "regla": "AISLAMIENTO: el fragmento está en el espacio de su documento (FK compuesta)",
+      "archivo": "migrations/0011_ia.sql",
+      "buscar": "FOREIGN KEY (documento_id, espacio_id) REFERENCES documentos (id, espacio_id) ON DELETE CASCADE",
+      "reemplazo": "FOREIGN KEY (documento_id) REFERENCES documentos (id) ON DELETE CASCADE",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C21",
+      "regla": "AISLAMIENTO: el trigger también protege las actualizaciones",
+      "archivo": "migrations/0011_ia.sql",
+      "buscar": "BEFORE INSERT OR UPDATE ON embeddings",
+      "reemplazo": "BEFORE INSERT ON embeddings",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C22",
+      "regla": "AISLAMIENTO: la búsqueda filtra por espacio",
+      "archivo": "migrations/0011_ia.sql",
+      "buscar": "  WHERE e.espacio_id = p_espacio\n",
+      "reemplazo": "  WHERE true\n",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C23",
+      "regla": "AISLAMIENTO: la búsqueda filtra por acceso actual de quien busca",
+      "archivo": "migrations/0011_ia.sql",
+      "buscar": "    AND rol_efectivo_documento(p_usuario, e.documento_id) IS NOT NULL\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C24",
+      "regla": "Permisos de documento solo para miembros del espacio (FK compuesta)",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "FOREIGN KEY (espacio_id, usuario_id) REFERENCES miembros_espacio (espacio_id, usuario_id) ON DELETE CASCADE",
+      "reemplazo": "FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C25",
+      "regla": "El permiso declara el espacio real del documento (FK compuesta)",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "CONSTRAINT permisos_documento_del_documento FOREIGN KEY (documento_id, espacio_id) REFERENCES documentos (id, espacio_id) ON DELETE CASCADE",
+      "reemplazo": "CONSTRAINT permisos_documento_del_documento FOREIGN KEY (documento_id) REFERENCES documentos (id) ON DELETE CASCADE",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C26",
+      "regla": "Rol efectivo: sin membresía en el espacio no hay acceso",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "    JOIN miembros_espacio me ON",
+      "reemplazo": "    LEFT JOIN miembros_espacio me ON",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C27",
+      "regla": "Rol efectivo: una cuenta lectora nunca pasa de lector (segunda capa)",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "           WHEN x.rol_cuenta = 'lector' THEN 'lector'",
+      "reemplazo": "           WHEN false THEN 'lector'",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C28",
+      "regla": "Rol efectivo: ser propietario del espacio da editor, no propietario del documento",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "least(nivel_rol(me.rol), 2)",
+      "reemplazo": "nivel_rol(me.rol)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C29",
+      "regla": "Rol efectivo: solo cuentas activas",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "JOIN usuarios u ON u.id = p_usuario AND u.estado = 'activa'",
+      "reemplazo": "JOIN usuarios u ON u.id = p_usuario",
+      "comando": "test:sql",
+      "equivalente": "Redundante por diseño: el JOIN obligatorio con miembros_espacio ya exige cuenta activa, porque una membresía solo existe para cuentas activas (CHECK + FK compuesta, mutaciones C39 y C40). Se conserva como defensa en profundidad."
+    },
+    {
+      "id": "C30",
+      "regla": "Techo de rol de cuenta: una cuenta lectora solo recibe rol lector",
+      "archivo": "migrations/0008_espacios.sql",
+      "buscar": "  IF NEW.rol <> 'lector' AND (SELECT rol FROM usuarios WHERE id = NEW.usuario_id) = 'lector' THEN",
+      "reemplazo": "  IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C31",
+      "regla": "Bajar una cuenta a lectora exige quitarle los roles que escriben",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "  IF NEW.rol = 'lector' AND OLD.rol <> 'lector' AND (",
+      "reemplazo": "  IF false AND (",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C32",
+      "regla": "Un solo propietario por documento",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "CREATE UNIQUE INDEX permisos_documento_un_propietario",
+      "reemplazo": "CREATE INDEX permisos_documento_un_propietario",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C33",
+      "regla": "Todo documento tiene propietario (restricción diferida)",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "     AND NOT EXISTS (SELECT 1 FROM permisos_documento WHERE documento_id = did AND rol = 'propietario') THEN",
+      "reemplazo": "     AND false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C34",
+      "regla": "Solo un editor o propietario del espacio crea documentos",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "      AND me.rol IN ('propietario', 'editor') AND",
+      "reemplazo": "      AND",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C35",
+      "regla": "Un documento no cambia de espacio",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "una_sola_vez('espacio_id', 'creado_por', 'creado_en')",
+      "reemplazo": "una_sola_vez('creado_por', 'creado_en')",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C36",
+      "regla": "Quitar o cambiar un permiso emite NOTIFY cuaderno_permisos",
+      "archivo": "migrations/0009_documentos.sql",
+      "buscar": "PERFORM pg_notify('cuaderno_permisos', ",
+      "reemplazo": "PERFORM concat('cuaderno_permisos', ",
+      "comando": "test:unit"
+    },
+    {
+      "id": "C37",
+      "regla": "Un solo propietario por espacio",
+      "archivo": "migrations/0008_espacios.sql",
+      "buscar": "CREATE UNIQUE INDEX miembros_espacio_un_propietario",
+      "reemplazo": "CREATE INDEX miembros_espacio_un_propietario",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C38",
+      "regla": "Todo espacio tiene propietario (restricción diferida)",
+      "archivo": "migrations/0008_espacios.sql",
+      "buscar": "     AND NOT EXISTS (SELECT 1 FROM miembros_espacio WHERE espacio_id = eid AND rol = 'propietario') THEN",
+      "reemplazo": "     AND false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C39",
+      "regla": "Miembros: CHECK estado_usuario = 'activa'",
+      "archivo": "migrations/0008_espacios.sql",
+      "buscar": "  CONSTRAINT miembros_espacio_solo_cuentas_activas CHECK (estado_usuario = 'activa'),\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "C40",
+      "regla": "Miembros: FK compuesta (usuario_id, estado_usuario) a usuarios (id, estado)",
+      "archivo": "migrations/0008_espacios.sql",
+      "buscar": "CONSTRAINT miembros_espacio_usuario_activo FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado)",
+      "reemplazo": "CONSTRAINT miembros_espacio_usuario_activo FOREIGN KEY (usuario_id) REFERENCES usuarios (id)",
+      "comando": "test:sql"
     }
   ]
 }

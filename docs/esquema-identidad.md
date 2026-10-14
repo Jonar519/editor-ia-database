@@ -131,3 +131,7 @@ Guarda tipo (lista cerrada), cuenta, IP truncada y fecha. **No tiene columnas de
 | La app solo puede actualizar `usuario_id` e `ip_red` (privilegio por columna) | F12 |
 | IP truncada | F13 |
 | Borrar una cuenta pendiente anonimiza sus eventos (`ON DELETE SET NULL`) | F14 |
+
+### Corrección del anti-replay (migración 0016)
+
+El trigger anti-replay de `mfa_totp` (0006) se disparaba en **cualquier** `UPDATE` de la fila. Después de aceptar el primer código, confirmar el MFA (`SET confirmado_en = now()`, sin tocar `ultimo_paso`) se rechazaba como si fuera un "replay". La migración 0016 lo redefine como `BEFORE UPDATE OF ultimo_paso`: el anti-replay sigue intacto (mutación B34) y confirmar ya no choca (mutación F15).

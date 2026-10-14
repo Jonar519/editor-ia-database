@@ -89,6 +89,7 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 | `0013_compatibilidad_prisma` | reglas "uno vigente" como restricciones de exclusión, para que Prisma introspecte bien |
 | `0014_inscripciones_mfa` | secreto MFA de un admin **pendiente**, ligado a su invitación (alternativa D del bloque F) |
 | `0015_eventos_seguridad` | registro de auditoría de solo inserción: tipo, cuenta, IP truncada; solo se anonimiza o se borra por retención (180 días) |
+| `0016_anti_replay_solo_ultimo_paso` | el anti-replay de `mfa_totp` solo se evalúa si el UPDATE toca `ultimo_paso` (corrige un defecto de 0006) |
 
 ## Rol de aplicación (privilegios mínimos)
 

@@ -977,6 +977,14 @@
       "buscar": "REFERENCES usuarios (id) ON DELETE SET NULL",
       "reemplazo": "REFERENCES usuarios (id)",
       "comando": "test:sql"
+    },
+    {
+      "id": "F15",
+      "regla": "El anti-replay solo se evalúa cuando el UPDATE toca ultimo_paso",
+      "archivo": "migrations/0016_anti_replay_solo_ultimo_paso.sql",
+      "buscar": "CREATE TRIGGER mfa_totp_anti_replay BEFORE UPDATE OF ultimo_paso ON mfa_totp",
+      "reemplazo": "CREATE TRIGGER mfa_totp_anti_replay BEFORE UPDATE ON mfa_totp",
+      "comando": "test:sql"
     }
   ]
 }

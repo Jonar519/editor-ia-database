@@ -99,3 +99,35 @@ Las reglas del tipo "como máximo uno vigente" nacieron como índices únicos pa
 - **Qué hacen:** exactamente lo mismo. El único cambio visible es que la violación da `23P01` en lugar de `23505`.
 - **Por qué cambiaron:** con índices únicos parciales, `prisma db pull` (el backend usa Prisma como cliente) deducía relaciones uno a uno que no existen. Unas producían un esquema inválido y otras un modelo falso en silencio.
 - **Lo que se agregó:** `invitaciones` y `mfa_totp`, cuya relación sí es uno a uno, tienen además un `UNIQUE (usuario_id, estado_usuario)` redundante, que es lo que Prisma exige.
+
+## Bloque F: inscripción MFA previa y auditoría (migraciones 0014 y 0015)
+
+### `inscripciones_mfa`: MFA de un admin pendiente (alternativa D)
+
+Un admin pendiente no puede tener fila en `mfa_totp`, y no puede activarse sin MFA. El secreto que ve antes de confirmar su primer código vive en esta tabla.
+
+| Regla | Mutación |
+|---|---|
+| Solo cuentas admin | F01 |
+| Nunca vence después que su invitación | F02 |
+| Solo cuentas pendientes (CHECK) | F03 |
+| FK compuesta a una cuenta pendiente. **Equivalente:** la cadena invitación → cuenta pendiente ya lo garantiza | F04 (equivalente) |
+| Pertenece a ESA invitación y a ESA cuenta (FK compuesta) | F05 |
+| Como máximo 5 intentos | F06 |
+| Secreto cifrado inmutable | F07 |
+
+Se borra en cascada con su invitación, sea porque se completa, se cancela o se reenvía.
+
+### `eventos_seguridad`: auditoría de solo inserción
+
+Guarda tipo (lista cerrada), cuenta, IP truncada y fecha. **No tiene columnas de texto libre**, así que por construcción no puede guardar tokens, contraseñas ni códigos.
+
+| Regla | Mutación |
+|---|---|
+| Tipo de una lista cerrada (sin texto libre) | F08 |
+| Solo se anonimiza: `usuario_id` e `ip_red` a NULL; nunca se reasigna ni se reescribe | F09 |
+| Solo se borran eventos más antiguos que la retención (180 días) | F10 |
+| TRUNCATE prohibido | F11 |
+| La app solo puede actualizar `usuario_id` e `ip_red` (privilegio por columna) | F12 |
+| IP truncada | F13 |
+| Borrar una cuenta pendiente anonimiza sus eventos (`ON DELETE SET NULL`) | F14 |

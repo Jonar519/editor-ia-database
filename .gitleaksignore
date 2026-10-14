@@ -1,0 +1,7 @@
+# Falsos positivos de gitleaks, identificados por huella (commit:archivo:regla:línea).
+# Cada entrada lleva su justificación. Los merges a main se hacen con "Create a merge commit" para que
+# estas huellas sigan siendo válidas (squash o rebase cambiarían el commit).
+
+# tests/sql/0015_eventos_seguridad.test.sql línea 13: un "token" ficticio (abecedario + dígitos) que la
+# prueba intenta guardar como tipo de evento para demostrar que el CHECK lo rechaza (23514). No es un secreto.
+c1a36cb681d99e7bb8c0e32cfb7ec4cf7a8aa523:tests/sql/0015_eventos_seguridad.test.sql:generic-api-key:13

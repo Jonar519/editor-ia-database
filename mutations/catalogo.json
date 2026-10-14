@@ -864,6 +864,119 @@
       "buscar": "clave.endsWith('PASSWORD')",
       "reemplazo": "false",
       "comando": "test:unit"
+    },
+    {
+      "id": "F01",
+      "regla": "Inscripción MFA previa solo para cuentas admin",
+      "archivo": "migrations/0014_inscripciones_mfa.sql",
+      "buscar": "  IF (SELECT rol FROM usuarios WHERE id = NEW.usuario_id) IS DISTINCT FROM 'admin' THEN",
+      "reemplazo": "  IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F02",
+      "regla": "Inscripción MFA: nunca vence después que su invitación",
+      "archivo": "migrations/0014_inscripciones_mfa.sql",
+      "buscar": "  IF NEW.expira_en > (SELECT expira_en FROM invitaciones WHERE id = NEW.invitacion_id) THEN",
+      "reemplazo": "  IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F03",
+      "regla": "Inscripción MFA: CHECK estado_usuario = pendiente",
+      "archivo": "migrations/0014_inscripciones_mfa.sql",
+      "buscar": "  CONSTRAINT inscripciones_mfa_solo_cuentas_pendientes CHECK (estado_usuario = 'pendiente'),\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F04",
+      "regla": "Inscripción MFA: FK compuesta a una cuenta pendiente",
+      "archivo": "migrations/0014_inscripciones_mfa.sql",
+      "buscar": "FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado) ON DELETE CASCADE",
+      "reemplazo": "FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE",
+      "comando": "test:sql",
+      "equivalente": "Redundante por diseño: la inscripción exige una invitación de la MISMA cuenta (FK compuesta, F05) y una invitación solo existe para cuentas pendientes (FK compuesta del bloque B, B02). Además, activar la cuenta exige borrar antes la invitación, lo que borra la inscripción en cascada. Se conserva como defensa en profundidad."
+    },
+    {
+      "id": "F05",
+      "regla": "Inscripción MFA: de ESA invitación y ESA cuenta (FK compuesta)",
+      "archivo": "migrations/0014_inscripciones_mfa.sql",
+      "buscar": "FOREIGN KEY (invitacion_id, usuario_id) REFERENCES invitaciones (id, usuario_id) ON DELETE CASCADE",
+      "reemplazo": "FOREIGN KEY (invitacion_id) REFERENCES invitaciones (id) ON DELETE CASCADE",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F06",
+      "regla": "Inscripción MFA: como máximo 5 intentos",
+      "archivo": "migrations/0014_inscripciones_mfa.sql",
+      "buscar": "CHECK (intentos BETWEEN 0 AND 5)",
+      "reemplazo": "CHECK (intentos >= 0)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F07",
+      "regla": "Inscripción MFA: secreto cifrado inmutable",
+      "archivo": "migrations/0014_inscripciones_mfa.sql",
+      "buscar": "una_sola_vez('secreto_cifrado', 'iv', 'etiqueta', 'invitacion_id', 'usuario_id')",
+      "reemplazo": "una_sola_vez('invitacion_id', 'usuario_id')",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F08",
+      "regla": "Auditoría sin texto libre: tipo de una lista cerrada",
+      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "buscar": "CONSTRAINT eventos_seguridad_tipo_valido CHECK (tipo IN (",
+      "reemplazo": "CONSTRAINT eventos_seguridad_tipo_valido CHECK (tipo IS NOT NULL OR tipo IN (",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F09",
+      "regla": "Auditoría: un evento no se reasigna a otra cuenta (solo se anonimiza)",
+      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "buscar": "       AND (NEW.usuario_id IS NOT DISTINCT FROM OLD.usuario_id OR NEW.usuario_id IS NULL)\n",
+      "reemplazo": "       AND true\n",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F10",
+      "regla": "Auditoría: solo se borran eventos más antiguos que la retención",
+      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "buscar": "    IF OLD.creado_en < now() - retencion_eventos_seguridad() THEN",
+      "reemplazo": "    IF true THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F11",
+      "regla": "Auditoría: TRUNCATE prohibido",
+      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "buscar": "CREATE TRIGGER eventos_seguridad_sin_truncate BEFORE TRUNCATE ON eventos_seguridad\n  FOR EACH STATEMENT EXECUTE FUNCTION eventos_seguridad_solo_insercion();\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F12",
+      "regla": "Auditoría: la app solo puede actualizar usuario_id e ip_red (privilegio por columna)",
+      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "buscar": "GRANT UPDATE (usuario_id, ip_red) ON eventos_seguridad TO cuaderno_app;",
+      "reemplazo": "GRANT UPDATE ON eventos_seguridad TO cuaderno_app;",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F13",
+      "regla": "Auditoría: IP truncada",
+      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "buscar": "CONSTRAINT eventos_seguridad_ip_truncada CHECK (ip_red IS NULL OR",
+      "reemplazo": "CONSTRAINT eventos_seguridad_ip_truncada CHECK (true OR",
+      "comando": "test:sql"
+    },
+    {
+      "id": "F14",
+      "regla": "Auditoría: borrar una cuenta pendiente anonimiza sus eventos",
+      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "buscar": "REFERENCES usuarios (id) ON DELETE SET NULL",
+      "reemplazo": "REFERENCES usuarios (id)",
+      "comando": "test:sql"
     }
   ]
 }

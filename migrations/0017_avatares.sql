@@ -24,6 +24,9 @@ CREATE TABLE avatares (
 
   CONSTRAINT avatares_solo_cuentas_activas CHECK (estado_usuario = 'activa'),
   CONSTRAINT avatares_usuario_activo FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado),
+  -- Redundante (usuario_id ya es la clave primaria), pero Prisma lo exige para modelar la relación uno a
+  -- uno con la clave foránea compuesta, igual que en mfa_totp (0013).
+  CONSTRAINT avatares_una_por_cuenta UNIQUE (usuario_id, estado_usuario),
   CONSTRAINT avatares_tamano CHECK (octet_length(datos) BETWEEN 1 AND 1048576),
   CONSTRAINT avatares_dimensiones CHECK (ancho BETWEEN 1 AND 4096 AND alto BETWEEN 1 AND 4096),
   -- Tipo de una lista cerrada (JPEG o PNG) y la firma de bytes que le corresponde: JPEG empieza con

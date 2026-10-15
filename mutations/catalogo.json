@@ -924,10 +924,10 @@
     },
     {
       "id": "F08",
-      "regla": "Auditoría sin texto libre: tipo de una lista cerrada",
-      "archivo": "migrations/0015_eventos_seguridad.sql",
-      "buscar": "CONSTRAINT eventos_seguridad_tipo_valido CHECK (tipo IN (",
-      "reemplazo": "CONSTRAINT eventos_seguridad_tipo_valido CHECK (tipo IS NOT NULL OR tipo IN (",
+      "regla": "Auditoría sin texto libre: tipo de una lista cerrada (definición vigente: 0018)",
+      "archivo": "migrations/0018_eliminar_cuenta.sql",
+      "buscar": "ADD CONSTRAINT eventos_seguridad_tipo_valido CHECK (tipo IN (",
+      "reemplazo": "ADD CONSTRAINT eventos_seguridad_tipo_valido CHECK (tipo IS NOT NULL OR tipo IN (",
       "comando": "test:sql"
     },
     {

@@ -178,6 +178,8 @@ Toda la eliminación ocurre en una llamada, dentro de la transacción del backen
 
 **Historial intacto.** Las versiones, actualizaciones y comentarios de otros documentos siguen apuntando al id de la lápida. Ese id no cambia, así que la cadena de hash de las versiones se sigue verificando (prueba de `verificar_cadena_versiones`).
 
+**La lista de tipos de evento se redefine aquí.** 0018 borra y vuelve a crear `eventos_seguridad_tipo_valido` con los tipos del bloque G, así que la regla vigente es la de 0018. La mutación F08 ahora apunta a esa definición: mutar la de 0015 ya no cambiaba nada y F08 sobrevivía.
+
 **No cubierto por mutación:** el `FOR UPDATE` sobre los espacios, que impide que alguien se sume a uno entre la revisión y el borrado. Es una carrera entre dos conexiones y las pruebas SQL corren en una sola; su mutación sería indetectable aquí.
 
 ### `purgar_retencion()` (0019)

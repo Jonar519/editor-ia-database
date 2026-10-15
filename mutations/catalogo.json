@@ -985,6 +985,166 @@
       "buscar": "CREATE TRIGGER mfa_totp_anti_replay BEFORE UPDATE OF ultimo_paso ON mfa_totp",
       "reemplazo": "CREATE TRIGGER mfa_totp_anti_replay BEFORE UPDATE ON mfa_totp",
       "comando": "test:sql"
+    },
+    {
+      "id": "G01",
+      "regla": "Avatar: solo cuentas activas (clave foránea compuesta)",
+      "archivo": "migrations/0017_avatares.sql",
+      "buscar": "FOREIGN KEY (usuario_id, estado_usuario) REFERENCES usuarios (id, estado),",
+      "reemplazo": "FOREIGN KEY (usuario_id) REFERENCES usuarios (id),",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G02",
+      "regla": "Avatar: solo cuentas activas (CHECK)",
+      "archivo": "migrations/0017_avatares.sql",
+      "buscar": "CONSTRAINT avatares_solo_cuentas_activas CHECK (estado_usuario = 'activa'),",
+      "reemplazo": "CONSTRAINT avatares_solo_cuentas_activas CHECK (true),",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G03",
+      "regla": "Avatar: un JPEG empieza con su firma FF D8 FF",
+      "archivo": "migrations/0017_avatares.sql",
+      "buscar": "(tipo = 'image/jpeg' AND substring(datos FROM 1 FOR 3) = '\\xffd8ff'::bytea",
+      "reemplazo": "(tipo = 'image/jpeg' AND true",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G04",
+      "regla": "Avatar: nada pegado después del fin de un JPEG (FF D9)",
+      "archivo": "migrations/0017_avatares.sql",
+      "buscar": "AND substring(datos FROM octet_length(datos) - 1) = '\\xffd9'::bytea)",
+      "reemplazo": ")",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G05",
+      "regla": "Avatar: un PNG empieza con su firma de 8 bytes",
+      "archivo": "migrations/0017_avatares.sql",
+      "buscar": "(tipo = 'image/png' AND substring(datos FROM 1 FOR 8) = '\\x89504e470d0a1a0a'::bytea)",
+      "reemplazo": "(tipo = 'image/png' AND true)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G06",
+      "regla": "Avatar: 1 MiB como máximo",
+      "archivo": "migrations/0017_avatares.sql",
+      "buscar": "CHECK (octet_length(datos) BETWEEN 1 AND 1048576)",
+      "reemplazo": "CHECK (octet_length(datos) BETWEEN 1 AND 2097152)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G07",
+      "regla": "Avatar: dimensiones de 1 a 4096 px",
+      "archivo": "migrations/0017_avatares.sql",
+      "buscar": "CHECK (ancho BETWEEN 1 AND 4096 AND alto BETWEEN 1 AND 4096)",
+      "reemplazo": "CHECK (true)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G08",
+      "regla": "Avatar: el hash es el SHA-256 de los datos",
+      "archivo": "migrations/0017_avatares.sql",
+      "buscar": "CHECK (hash = sha256(datos))",
+      "reemplazo": "CHECK (octet_length(hash) = 32)",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G09",
+      "regla": "Eliminar cuenta: 409 si es propietaria de documentos con colaboradores",
+      "archivo": "migrations/0018_eliminar_cuenta.sql",
+      "buscar": "WHERE pd.usuario_id = p_usuario AND pd.rol = 'propietario'",
+      "reemplazo": "WHERE false",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G10",
+      "regla": "Eliminar cuenta: 409 si es propietaria de espacios con otros miembros",
+      "archivo": "migrations/0018_eliminar_cuenta.sql",
+      "buscar": "WHERE me.usuario_id = p_usuario AND me.rol = 'propietario'",
+      "reemplazo": "WHERE false",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G11",
+      "regla": "Eliminar cuenta: se borran los espacios (y documentos) sin colaboradores",
+      "archivo": "migrations/0018_eliminar_cuenta.sql",
+      "buscar": "  DELETE FROM espacios WHERE id = ANY (v_solos);\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G12",
+      "regla": "Eliminar cuenta: sus eventos de seguridad se anonimizan",
+      "archivo": "migrations/0018_eliminar_cuenta.sql",
+      "buscar": "  UPDATE eventos_seguridad SET usuario_id = NULL, ip_red = NULL WHERE usuario_id = p_usuario;\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G13",
+      "regla": "Eliminar cuenta: la IP de sus eventos también se anonimiza",
+      "archivo": "migrations/0018_eliminar_cuenta.sql",
+      "buscar": "SET usuario_id = NULL, ip_red = NULL WHERE",
+      "reemplazo": "SET usuario_id = NULL WHERE",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G14",
+      "regla": "Eliminar cuenta: se borra su uso de IA",
+      "archivo": "migrations/0018_eliminar_cuenta.sql",
+      "buscar": "  DELETE FROM uso_ia_diario WHERE usuario_id = p_usuario;\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G15",
+      "regla": "Eliminar cuenta: solo una cuenta activa",
+      "archivo": "migrations/0018_eliminar_cuenta.sql",
+      "buscar": "IF v_estado IS DISTINCT FROM 'activa' THEN",
+      "reemplazo": "IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G16",
+      "regla": "Retención: sesiones terminadas hace más de 30 días",
+      "archivo": "migrations/0019_retencion.sql",
+      "buscar": "SELECT interval '30 days'",
+      "reemplazo": "SELECT interval '20 days'",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G17",
+      "regla": "Retención: una sesión revocada cuenta desde su revocación",
+      "archivo": "migrations/0019_retencion.sql",
+      "buscar": "WHERE least(coalesce(revocada_en, 'infinity'::timestamptz), expira_en) <",
+      "reemplazo": "WHERE expira_en <",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G18",
+      "regla": "Retención: tokens vencidos hace más de 1 día",
+      "archivo": "migrations/0019_retencion.sql",
+      "buscar": "SELECT interval '1 day'",
+      "reemplazo": "SELECT interval '0 days'",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G19",
+      "regla": "Retención: correos simulados solo cuando vencen",
+      "archivo": "migrations/0019_retencion.sql",
+      "buscar": "DELETE FROM correos_simulados WHERE expira_en <= now();",
+      "reemplazo": "DELETE FROM correos_simulados WHERE creado_en <= now();",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G20",
+      "regla": "Retención: eventos de seguridad de más de 180 días",
+      "archivo": "migrations/0019_retencion.sql",
+      "buscar": "  DELETE FROM eventos_seguridad WHERE creado_en < now() - retencion_eventos_seguridad();\n",
+      "reemplazo": "",
+      "comando": "test:sql"
     }
   ]
 }

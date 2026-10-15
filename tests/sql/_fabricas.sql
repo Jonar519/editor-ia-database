@@ -110,3 +110,11 @@ RETURNS uuid LANGUAGE sql AS $$
           convert_to(p_texto, 'UTF8'), p_texto)
   RETURNING id
 $$;
+
+-- Avatar mínimo con la firma JPEG (FF D8 FF ... FF D9). La base no decodifica la imagen: solo exige la
+-- firma, el tamaño, las dimensiones y que el hash corresponda a los datos.
+CREATE OR REPLACE FUNCTION prueba.avatar(p_usuario uuid) RETURNS void LANGUAGE sql AS $$
+  INSERT INTO avatares (usuario_id, tipo, datos, ancho, alto, hash)
+  SELECT p_usuario, 'image/jpeg', d, 64, 64, sha256(d)
+  FROM (SELECT '\xffd8ffdb'::bytea || prueba.bytes(16) || '\xffd9'::bytea AS d) AS x
+$$;

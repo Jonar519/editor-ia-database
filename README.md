@@ -90,6 +90,9 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 | `0014_inscripciones_mfa` | secreto MFA de un admin **pendiente**, ligado a su invitación (alternativa D del bloque F) |
 | `0015_eventos_seguridad` | registro de auditoría de solo inserción: tipo, cuenta, IP truncada; solo se anonimiza o se borra por retención (180 días) |
 | `0016_anti_replay_solo_ultimo_paso` | el anti-replay de `mfa_totp` solo se evalúa si el UPDATE toca `ultimo_paso` (corrige un defecto de 0006) |
+| `0017_avatares` | avatar de una cuenta activa: JPEG o PNG con su firma de bytes, 1 MiB y 4096 px como máximo, hash comprobado por la base |
+| `0018_eliminar_cuenta` | `eliminar_cuenta()`: lápida, 409 con documentos o espacios compartidos, borrado de lo que no tiene colaboradores; tipos de evento del bloque G |
+| `0019_retencion` | `purgar_retencion()`: plazos de retención de sesiones, tokens, correos simulados y eventos de seguridad (la llama un job diario del backend) |
 
 ## Rol de aplicación (privilegios mínimos)
 

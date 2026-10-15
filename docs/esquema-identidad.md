@@ -135,3 +135,61 @@ Guarda tipo (lista cerrada), cuenta, IP truncada y fecha. **No tiene columnas de
 ### Corrección del anti-replay (migración 0016)
 
 El trigger anti-replay de `mfa_totp` (0006) se disparaba en **cualquier** `UPDATE` de la fila. Después de aceptar el primer código, confirmar el MFA (`SET confirmado_en = now()`, sin tocar `ultimo_paso`) se rechazaba como si fuera un "replay". La migración 0016 lo redefine como `BEFORE UPDATE OF ultimo_paso`: el anti-replay sigue intacto (mutación B34) y confirmar ya no choca (mutación F15).
+
+## Bloque G: avatar, eliminación de cuenta y retención (migraciones 0017–0019)
+
+### `avatares` (0017)
+
+El backend limpia la imagen antes de guardarla (lista blanca de segmentos JPEG o chunks PNG). La base agrega sus propias barreras:
+
+| Regla | Mutación |
+|---|---|
+| Solo cuentas activas (clave foránea compuesta) | G01 |
+| Solo cuentas activas (CHECK) | G02 |
+| Un JPEG empieza con `FF D8 FF` | G03 |
+| Nada pegado después del fin de un JPEG (`FF D9`) | G04 |
+| Un PNG empieza con su firma de 8 bytes | G05 |
+| 1 MiB como máximo | G06 |
+| Dimensiones de 1 a 4096 px | G07 |
+| `hash = sha256(datos)` | G08 |
+
+No hay un CHECK aparte para la lista de tipos: el de la firma ya solo admite `image/jpeg` o `image/png`, y una mutación que quitara el otro sería **equivalente**.
+
+### `eliminar_cuenta(cuenta)` (0018)
+
+Toda la eliminación ocurre en una llamada, dentro de la transacción del backend:
+
+1. **409 (`CU409`)** si la cuenta es propietaria de documentos con colaboradores, o de espacios con otros miembros. Como un documento no tiene privacidad dentro de su espacio, colaborador es cualquier otro miembro del espacio.
+2. Se borran los espacios donde es el **único miembro**, con todo su contenido: son exactamente los documentos sin colaboradores.
+3. Se borran sus membresías, sesiones, tokens, cambios de correo, MFA, avatar y uso de IA. Sus eventos de seguridad se **anonimizan**.
+4. La cuenta queda como **lápida**: sin correo, nombre, teléfono ni contraseña.
+
+| Regla | Mutación |
+|---|---|
+| 409 con documentos compartidos | G09 |
+| 409 con espacios compartidos | G10 |
+| Se borra lo que no tiene colaboradores | G11 |
+| Sus eventos se anonimizan (cuenta) | G12 |
+| Sus eventos se anonimizan (IP) | G13 |
+| Se borra su uso de IA | G14 |
+| Solo una cuenta activa | G15 |
+
+**Sin documentos huérfanos, por construcción.** Todo documento tiene exactamente un propietario (revisado al `COMMIT`), el propietario es miembro del espacio y solo una cuenta activa puede ser miembro. Una lápida no puede ser propietaria de nada.
+
+**Historial intacto.** Las versiones, actualizaciones y comentarios de otros documentos siguen apuntando al id de la lápida. Ese id no cambia, así que la cadena de hash de las versiones se sigue verificando (prueba de `verificar_cadena_versiones`).
+
+**No cubierto por mutación:** el `FOR UPDATE` sobre los espacios, que impide que alguien se sume a uno entre la revisión y el borrado. Es una carrera entre dos conexiones y las pruebas SQL corren en una sola; su mutación sería indetectable aquí.
+
+### `purgar_retencion()` (0019)
+
+Los plazos viven en la base y se miden con su reloj. Se ejecuta una vez al día desde un job del backend.
+
+| Qué se borra | Plazo | Mutación |
+|---|---|---|
+| Sesiones terminadas, con sus refresh en cascada | 30 días desde que terminaron | G16 |
+| Una sesión revocada cuenta desde la revocación, aunque venza después | | G17 |
+| Tokens de recuperación y cambios de correo | 1 día después de vencer | G18 |
+| Correos simulados | al vencer (7 días como máximo) | G19 |
+| Eventos de seguridad | 180 días | G20 |
+
+Los refresh **usados** de una sesión viva no se borran: son los que permiten detectar la reutilización de uno robado.

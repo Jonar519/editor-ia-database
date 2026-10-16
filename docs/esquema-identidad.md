@@ -193,5 +193,9 @@ Los plazos viven en la base y se miden con su reloj. Se ejecuta una vez al día 
 | Tokens de recuperación y cambios de correo | 1 día después de vencer | G18 |
 | Correos simulados | al vencer (7 días como máximo) | G19 |
 | Eventos de seguridad | 180 días | G20 |
+| Cuentas pendientes con la invitación vencida, con su invitación e inscripción MFA en cascada (0020) | 7 días después de vencer la invitación | G21, G22 |
+| Una cuenta pendiente recién creada (su invitación aún no existe) no se toca | | G23 |
 
 Los refresh **usados** de una sesión viva no se borran: son los que permiten detectar la reutilización de uno robado.
+
+**0020 reemplaza `purgar_retencion()` entera** para agregar el paso de las cuentas pendientes. Por eso G17, G19 y G20 apuntan ahora a 0020, la definición vigente. Si siguieran mutando 0019, sobrevivirían sin que nada falle, como le pasó a F08 en el bloque G.

@@ -1116,8 +1116,8 @@
     },
     {
       "id": "G17",
-      "regla": "Retención: una sesión revocada cuenta desde su revocación",
-      "archivo": "migrations/0019_retencion.sql",
+      "regla": "Retención: una sesión revocada cuenta desde su revocación (definición vigente: 0020)",
+      "archivo": "migrations/0020_purga_invitaciones.sql",
       "buscar": "WHERE least(coalesce(revocada_en, 'infinity'::timestamptz), expira_en) <",
       "reemplazo": "WHERE expira_en <",
       "comando": "test:sql"
@@ -1132,17 +1132,41 @@
     },
     {
       "id": "G19",
-      "regla": "Retención: correos simulados solo cuando vencen",
-      "archivo": "migrations/0019_retencion.sql",
+      "regla": "Retención: correos simulados solo cuando vencen (definición vigente: 0020)",
+      "archivo": "migrations/0020_purga_invitaciones.sql",
       "buscar": "DELETE FROM correos_simulados WHERE expira_en <= now();",
       "reemplazo": "DELETE FROM correos_simulados WHERE creado_en <= now();",
       "comando": "test:sql"
     },
     {
       "id": "G20",
-      "regla": "Retención: eventos de seguridad de más de 180 días",
-      "archivo": "migrations/0019_retencion.sql",
+      "regla": "Retención: eventos de seguridad de más de 180 días (definición vigente: 0020)",
+      "archivo": "migrations/0020_purga_invitaciones.sql",
       "buscar": "  DELETE FROM eventos_seguridad WHERE creado_en < now() - retencion_eventos_seguridad();\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G21",
+      "regla": "Retención: se borran las cuentas pendientes con la invitación vencida",
+      "archivo": "migrations/0020_purga_invitaciones.sql",
+      "buscar": "  DELETE FROM usuarios u\n  WHERE u.estado = 'pendiente'\n",
+      "reemplazo": "  PERFORM 1 FROM usuarios u\n  WHERE u.estado = 'pendiente'\n",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G22",
+      "regla": "Retención: una invitación vencida hace menos de 7 días conserva su cuenta",
+      "archivo": "migrations/0020_purga_invitaciones.sql",
+      "buscar": "WHERE i.usuario_id = u.id AND i.expira_en >= now() - retencion_invitaciones_vencidas()",
+      "reemplazo": "WHERE i.usuario_id = u.id AND i.expira_en >= now()",
+      "comando": "test:sql"
+    },
+    {
+      "id": "G23",
+      "regla": "Retención: una cuenta pendiente recién creada no se toca",
+      "archivo": "migrations/0020_purga_invitaciones.sql",
+      "buscar": "    AND u.creado_en < now() - retencion_invitaciones_vencidas()\n",
       "reemplazo": "",
       "comando": "test:sql"
     }

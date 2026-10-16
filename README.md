@@ -93,6 +93,7 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 | `0017_avatares` | avatar de una cuenta activa: JPEG o PNG con su firma de bytes, 1 MiB y 4096 px como máximo, hash comprobado por la base |
 | `0018_eliminar_cuenta` | `eliminar_cuenta()`: lápida, 409 con documentos o espacios compartidos, borrado de lo que no tiene colaboradores; tipos de evento del bloque G |
 | `0019_retencion` | `purgar_retencion()`: plazos de retención de sesiones, tokens, correos simulados y eventos de seguridad (la llama un job diario del backend) |
+| `0020_purga_invitaciones` | la retención borra también las cuentas pendientes 7 días después de que venció su invitación (decisión 7 del bloque G) |
 
 ## Rol de aplicación (privilegios mínimos)
 

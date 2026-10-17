@@ -1169,6 +1169,103 @@
       "buscar": "    AND u.creado_en < now() - retencion_invitaciones_vencidas()\n",
       "reemplazo": "",
       "comando": "test:sql"
+    },
+    {
+      "id": "K01",
+      "regla": "Compactación: la app no puede borrar actualizaciones Yjs directamente (privilegio)",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "REVOKE DELETE ON actualizaciones_documento FROM cuaderno_app;",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K02",
+      "regla": "Compactación: solo se borran las filas hasta hasta_id (las posteriores se quedan)",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "WHERE documento_id = p_documento AND id <= p_hasta;",
+      "reemplazo": "WHERE documento_id = p_documento;",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K03",
+      "regla": "Compactación: solo se borran filas de ESE documento",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "WHERE documento_id = p_documento AND id <= p_hasta;",
+      "reemplazo": "WHERE id <= p_hasta;",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K04",
+      "regla": "Compactación: borrar y escribir el estado van en la misma llamada",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "  UPDATE documentos SET estado_yjs = p_estado WHERE id = p_documento;\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K05",
+      "regla": "Compactación: no se acepta un estado vacío",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "IF p_estado IS NULL OR octet_length(p_estado) = 0 THEN",
+      "reemplazo": "IF p_estado IS NULL THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K06",
+      "regla": "Compactación: hasta_id tiene que ser una actualización vigente de ese documento",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "IF NOT EXISTS (SELECT 1 FROM actualizaciones_documento WHERE documento_id = p_documento AND id = p_hasta) THEN",
+      "reemplazo": "IF false THEN",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K07",
+      "regla": "Compactación: la función SECURITY DEFINER tiene search_path fijo",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "SET search_path = public, pg_temp\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K08",
+      "regla": "Compactación: PUBLIC no puede ejecutar la función (solo cuaderno_app)",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "REVOKE ALL ON FUNCTION compactar_documento(uuid, bigint, bytea) FROM PUBLIC;",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K09",
+      "regla": "Compactación: la función corre con los privilegios del dueño (SECURITY DEFINER), la app no",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "LANGUAGE plpgsql\nSECURITY DEFINER\n",
+      "reemplazo": "LANGUAGE plpgsql\nSECURITY INVOKER\n",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K10",
+      "regla": "Compactación: sin hasta_id no compacta",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "IF p_hasta IS NULL THEN",
+      "reemplazo": "IF false THEN",
+      "comando": "test:sql",
+      "equivalente": "Con hasta_id NULL, la comprobación de existencia (id = NULL nunca es verdadero) rechaza igual, con el mismo SQLSTATE 23514 y sin tocar nada. La comprobación explícita solo da un mensaje más claro."
+    },
+    {
+      "id": "K11",
+      "regla": "Compactación: se bloquea el documento ANTES de comprobar hasta_id (una compactación vieja no pisa a una nueva)",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "  PERFORM 1 FROM documentos WHERE id = p_documento FOR NO KEY UPDATE;",
+      "reemplazo": "  PERFORM 1 FROM documentos WHERE id = p_documento;",
+      "comando": "test:unit"
+    },
+    {
+      "id": "K12",
+      "regla": "Compactación: el bloqueo es NO KEY (los cambios nuevos se siguen insertando mientras se compacta)",
+      "archivo": "migrations/0021_compactar_documento.sql",
+      "buscar": "  PERFORM 1 FROM documentos WHERE id = p_documento FOR NO KEY UPDATE;",
+      "reemplazo": "  PERFORM 1 FROM documentos WHERE id = p_documento FOR UPDATE;",
+      "comando": "test:unit"
     }
   ]
 }

@@ -1,6 +1,6 @@
-# Esquema del dominio (migraciones 0008–0011)
+# Esquema del dominio (migraciones 0008–0011 y 0021)
 
-Como en la identidad, las reglas del dominio viven **en la base**. Cada una tiene una prueba SQL que intenta violarla y una mutación que la quita (`mutations/catalogo.json`, ids C01–C40).
+Como en la identidad, las reglas del dominio viven **en la base**. Cada una tiene una prueba SQL que intenta violarla y una mutación que la quita (`mutations/catalogo.json`, ids C01–C40 y K01–K12).
 
 ## Modelo
 
@@ -60,6 +60,30 @@ El rol de cuenta `admin` administra cuentas e invitaciones. **No** da acceso al 
 | Insertar una actualización Yjs exige rol efectivo editor o propietario | C10, C11 |
 | Crear una versión manual o una restauración exige escritura | C09 |
 | Las automáticas no tienen autor; las manuales y las restauraciones sí | C13 |
+
+### Compactación del log Yjs (0021, bloque K1)
+
+`actualizaciones_documento` es un log de solo inserción. Compactar es escribir en `documentos.estado_yjs` un estado que ya incluye las filas, y borrarlas. **La base no puede leer Yjs**, así que no comprueba que el estado contenga lo que se borra: eso lo hace el backend antes de llamar (ADR 0003). Lo que sí garantiza la base:
+
+- **La app no borra actualizaciones por su cuenta** (`REVOKE DELETE`). Solo puede `compactar_documento(documento, hasta_id, estado)`, que escribe el estado y borra **en la misma llamada**.
+- Solo borra filas **de ese documento** con `id <= hasta_id`. Las que llegan mientras tanto se quedan para la próxima.
+- `hasta_id` tiene que ser una actualización **vigente** de ese documento. Si otra compactación ya la borró, falla y el job vuelve a leer.
+- **Bloquea el documento antes de comprobar `hasta_id`** (`FOR NO KEY UPDATE`): una compactación vieja que esperaba a una nueva falla en vez de escribir su estado encima, lo que perdería filas que la nueva ya borró. Al ser `NO KEY`, insertar cambios nuevos (que toman `KEY SHARE` por la clave foránea) **no** se bloquea. Las dos cosas se prueban con transacciones reales (`tests/integracion/compactar-concurrencia.test.mjs`).
+- `SECURITY DEFINER` con `search_path` fijo; solo `cuaderno_app` la ejecuta.
+- Borrar un documento sigue borrando su log en cascada (la cascada la ejecuta el dueño de la tabla).
+
+`documentos.actualizado_en` es "último cambio de la fila" (título o estado compactado), no "última edición del texto": compactar también lo mueve.
+
+| Regla | Mutación |
+|---|---|
+| La app no borra actualizaciones directamente | K01 |
+| Solo hasta `hasta_id`, solo de ese documento | K02, K03 |
+| Borrar y escribir el estado van juntos | K04 |
+| Sin estado vacío | K05 |
+| `hasta_id` vigente de ese documento | K06 |
+| `search_path` fijo, sin PUBLIC, con los privilegios del dueño | K07, K08, K09 |
+| Sin `hasta_id` no compacta | K10 (**equivalente**: la comprobación de existencia rechaza NULL con el mismo SQLSTATE) |
+| Bloqueo antes de comprobar, y `NO KEY` | K11, K12 |
 
 ### Historial de versiones a prueba de manipulación
 

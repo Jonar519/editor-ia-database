@@ -94,6 +94,7 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 | `0018_eliminar_cuenta` | `eliminar_cuenta()`: lápida, 409 con documentos o espacios compartidos, borrado de lo que no tiene colaboradores; tipos de evento del bloque G |
 | `0019_retencion` | `purgar_retencion()`: plazos de retención de sesiones, tokens, correos simulados y eventos de seguridad (la llama un job diario del backend) |
 | `0020_purga_invitaciones` | la retención borra también las cuentas pendientes 7 días después de que venció su invitación (decisión 7 del bloque G) |
+| `0021_compactar_documento` | `compactar_documento()`: escribe el estado Yjs y borra el log hasta un id en la misma llamada; la app ya no puede borrar actualizaciones por su cuenta (bloque K1, ADR 0003 del backend) |
 
 ## Rol de aplicación (privilegios mínimos)
 
@@ -111,16 +112,19 @@ Al no ser dueño de las tablas, `cuaderno_app` **no puede**:
 - hacer `TRUNCATE`;
 - usar `session_replication_role`;
 - escribir en `schema_migrations`;
-- modificar o borrar versiones, ni reescribir actualizaciones Yjs. Esto lo impide por privilegio, además del trigger.
+- modificar o borrar versiones, ni reescribir actualizaciones Yjs. Esto lo impide por privilegio, además del trigger;
+- borrar actualizaciones Yjs por su cuenta (0021): solo puede compactarlas con `compactar_documento()`, que escribe el estado en la misma llamada.
 
-Las pruebas `tests/sql/0012_rol_aplicacion.test.sql` lo intentan una por una.
+Las pruebas `tests/sql/0012_rol_aplicacion.test.sql` y `0021_compactar_documento.test.sql` lo intentan una por una.
+
+**`compactar_documento()` es `SECURITY DEFINER`:** corre como el dueño de las tablas. En desarrollo ese dueño (`cuaderno`, de la imagen de Postgres) es superusuario. La función tiene `search_path` fijo y un cuerpo cerrado. En producción el dueño de las tablas debe ser un rol **sin** superusuario.
 
 `db-up.bat` habilita el LOGIN del rol y le pone la contraseña de `.env` (`scripts/usuario-app.mjs`). Los roles son de todo el servidor, no de una base, así que este paso no toca tablas ni datos.
 
 Cada regla, con su prueba y su mutación, está documentada en dos archivos:
 
 - [docs/esquema-identidad.md](docs/esquema-identidad.md) (migraciones 0002–0007)
-- [docs/esquema-dominio.md](docs/esquema-dominio.md) (migraciones 0008–0011)
+- [docs/esquema-dominio.md](docs/esquema-dominio.md) (migraciones 0008–0011 y 0021)
 
 ## Pruebas
 

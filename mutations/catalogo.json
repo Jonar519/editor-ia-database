@@ -924,24 +924,24 @@
     },
     {
       "id": "F08",
-      "regla": "Auditoría sin texto libre: tipo de una lista cerrada (definición vigente: 0018)",
-      "archivo": "migrations/0018_eliminar_cuenta.sql",
+      "regla": "Auditoría sin texto libre: tipo de una lista cerrada (definición vigente: 0022)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
       "buscar": "ADD CONSTRAINT eventos_seguridad_tipo_valido CHECK (tipo IN (",
       "reemplazo": "ADD CONSTRAINT eventos_seguridad_tipo_valido CHECK (tipo IS NOT NULL OR tipo IN (",
       "comando": "test:sql"
     },
     {
       "id": "F09",
-      "regla": "Auditoría: un evento no se reasigna a otra cuenta (solo se anonimiza)",
-      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "regla": "Auditoría: un evento no se reasigna a otra cuenta (solo se anonimiza; definición vigente: 0022)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
       "buscar": "       AND (NEW.usuario_id IS NOT DISTINCT FROM OLD.usuario_id OR NEW.usuario_id IS NULL)\n",
       "reemplazo": "       AND true\n",
       "comando": "test:sql"
     },
     {
       "id": "F10",
-      "regla": "Auditoría: solo se borran eventos más antiguos que la retención",
-      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "regla": "Auditoría: solo se borran eventos más antiguos que la retención (definición vigente: 0022)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
       "buscar": "    IF OLD.creado_en < now() - retencion_eventos_seguridad() THEN",
       "reemplazo": "    IF true THEN",
       "comando": "test:sql"

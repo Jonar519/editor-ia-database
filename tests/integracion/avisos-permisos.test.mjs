@@ -84,6 +84,36 @@ describe('NOTIFY cuaderno_permisos', () => {
     expect(await esperarAvisos(1)).toEqual([]);
   });
 
+  it('avisa al revocar una sesión viva, con solo ids (0022)', async () => {
+    const { rows } = await escritor.query('SELECT prueba.sesion($1) AS s', [ids.bruno]);
+    await esperarAvisos(0);
+    await escritor.query("UPDATE sesiones SET revocada_en = now(), motivo_revocacion = 'cierre' WHERE id = $1", [rows[0].s]);
+    expect(await esperarAvisos(1)).toEqual([{ tabla: 'sesiones', operacion: 'UPDATE', usuario_id: ids.bruno, sesion_id: rows[0].s }]);
+  });
+
+  it('avisa al cambiar el rol de una cuenta, no al activarla (0022)', async () => {
+    const { rows } = await escritor.query("SELECT prueba.cuenta_activa('carla@example.com') AS c");
+    expect(await esperarAvisos(1)).toEqual([]); // activarse no quita acceso a nadie
+    await escritor.query("UPDATE usuarios SET rol = 'lector' WHERE id = $1", [rows[0].c]);
+    expect(await esperarAvisos(1)).toEqual([{ tabla: 'usuarios', operacion: 'UPDATE', usuario_id: rows[0].c }]);
+  });
+
+  it('avisa al borrar un documento (0022)', async () => {
+    const { rows } = await escritor.query('SELECT prueba.documento($1, $2) AS d', [ids.e, ids.ana]);
+    await esperarAvisos(0);
+    await escritor.query('DELETE FROM documentos WHERE id = $1', [rows[0].d]);
+    const avisosDoc = (await esperarAvisos(1)).filter((a) => a.tabla === 'documentos');
+    expect(avisosDoc).toEqual([{ tabla: 'documentos', operacion: 'DELETE', espacio_id: ids.e, documento_id: rows[0].d }]);
+  });
+
+  it('no avisa al borrar una sesión que ya terminó (la retención diaria no inunda el canal)', async () => {
+    const { rows } = await escritor.query('SELECT prueba.sesion($1) AS s', [ids.ana]);
+    await escritor.query("UPDATE sesiones SET revocada_en = now(), motivo_revocacion = 'cierre' WHERE id = $1", [rows[0].s]);
+    await esperarAvisos(1);
+    await escritor.query('DELETE FROM sesiones WHERE id = $1', [rows[0].s]);
+    expect(await esperarAvisos(1)).toEqual([]);
+  });
+
   it('no avisa al dar un permiso (no hay conexión que cortar)', async () => {
     await escritor.query('SELECT prueba.permiso($1, $2, $3)', [ids.d, ids.bruno, 'lector']);
     expect(await esperarAvisos(1)).toEqual([]);

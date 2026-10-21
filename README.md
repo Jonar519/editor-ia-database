@@ -95,6 +95,7 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 | `0019_retencion` | `purgar_retencion()`: plazos de retención de sesiones, tokens, correos simulados y eventos de seguridad (la llama un job diario del backend) |
 | `0020_purga_invitaciones` | la retención borra también las cuentas pendientes 7 días después de que venció su invitación (decisión 7 del bloque G) |
 | `0021_compactar_documento` | `compactar_documento()`: escribe el estado Yjs y borra el log hasta un id en la misma llamada; la app ya no puede borrar actualizaciones por su cuenta (bloque K1, ADR 0003 del backend) |
+| `0022_auditoria_y_avisos` | auditoría de permisos (`objetivo_id`, `recurso_id` como id y nueve tipos) y avisos `cuaderno_permisos`, con solo ids, de todo lo que quita acceso: sesiones, cuentas y documentos (bloque K2; mutaciones K13–K17) |
 
 ## Rol de aplicación (privilegios mínimos)
 

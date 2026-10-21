@@ -924,24 +924,24 @@
     },
     {
       "id": "F08",
-      "regla": "Auditoría sin texto libre: tipo de una lista cerrada (definición vigente: 0018)",
-      "archivo": "migrations/0018_eliminar_cuenta.sql",
+      "regla": "Auditoría sin texto libre: tipo de una lista cerrada (definición vigente: 0022)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
       "buscar": "ADD CONSTRAINT eventos_seguridad_tipo_valido CHECK (tipo IN (",
       "reemplazo": "ADD CONSTRAINT eventos_seguridad_tipo_valido CHECK (tipo IS NOT NULL OR tipo IN (",
       "comando": "test:sql"
     },
     {
       "id": "F09",
-      "regla": "Auditoría: un evento no se reasigna a otra cuenta (solo se anonimiza)",
-      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "regla": "Auditoría: un evento no se reasigna a otra cuenta (solo se anonimiza; definición vigente: 0022)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
       "buscar": "       AND (NEW.usuario_id IS NOT DISTINCT FROM OLD.usuario_id OR NEW.usuario_id IS NULL)\n",
       "reemplazo": "       AND true\n",
       "comando": "test:sql"
     },
     {
       "id": "F10",
-      "regla": "Auditoría: solo se borran eventos más antiguos que la retención",
-      "archivo": "migrations/0015_eventos_seguridad.sql",
+      "regla": "Auditoría: solo se borran eventos más antiguos que la retención (definición vigente: 0022)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
       "buscar": "    IF OLD.creado_en < now() - retencion_eventos_seguridad() THEN",
       "reemplazo": "    IF true THEN",
       "comando": "test:sql"
@@ -1266,6 +1266,46 @@
       "buscar": "  PERFORM 1 FROM documentos WHERE id = p_documento FOR NO KEY UPDATE;",
       "reemplazo": "  PERFORM 1 FROM documentos WHERE id = p_documento FOR UPDATE;",
       "comando": "test:unit"
+    },
+    {
+      "id": "K13",
+      "regla": "Avisos: revocar una sesión viva avisa (corta su WebSocket)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
+      "buscar": "FOR EACH ROW WHEN (OLD.revocada_en IS NULL AND NEW.revocada_en IS NOT NULL)",
+      "reemplazo": "FOR EACH ROW WHEN (false)",
+      "comando": "test:unit"
+    },
+    {
+      "id": "K14",
+      "regla": "Avisos: una cuenta que deja de estar activa o cambia de rol avisa",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
+      "buscar": "FOR EACH ROW WHEN ((OLD.estado = 'activa' AND NEW.estado <> 'activa') OR OLD.rol IS DISTINCT FROM NEW.rol)",
+      "reemplazo": "FOR EACH ROW WHEN (false)",
+      "comando": "test:unit"
+    },
+    {
+      "id": "K15",
+      "regla": "Avisos: borrar un documento avisa (también a quien tenía acceso solo por el espacio)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
+      "buscar": "CREATE TRIGGER documentos_avisar_borrado AFTER DELETE ON documentos\n  FOR EACH ROW EXECUTE",
+      "reemplazo": "CREATE TRIGGER documentos_avisar_borrado AFTER DELETE ON documentos\n  FOR EACH ROW WHEN (false) EXECUTE",
+      "comando": "test:unit"
+    },
+    {
+      "id": "K16",
+      "regla": "Auditoría: una lápida deja de ser objetivo identificable (dentro de eliminar_cuenta)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
+      "buscar": "  UPDATE eventos_seguridad SET objetivo_id = NULL WHERE objetivo_id = NEW.id;",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K17",
+      "regla": "Auditoría: recurso_id no se reescribe (solo se anonimizan cuentas e IP)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
+      "buscar": "       AND NEW.recurso_id IS NOT DISTINCT FROM OLD.recurso_id\n",
+      "reemplazo": "",
+      "comando": "test:sql"
     }
   ]
 }

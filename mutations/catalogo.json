@@ -1266,6 +1266,46 @@
       "buscar": "  PERFORM 1 FROM documentos WHERE id = p_documento FOR NO KEY UPDATE;",
       "reemplazo": "  PERFORM 1 FROM documentos WHERE id = p_documento FOR UPDATE;",
       "comando": "test:unit"
+    },
+    {
+      "id": "K13",
+      "regla": "Avisos: revocar una sesión viva avisa (corta su WebSocket)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
+      "buscar": "FOR EACH ROW WHEN (OLD.revocada_en IS NULL AND NEW.revocada_en IS NOT NULL)",
+      "reemplazo": "FOR EACH ROW WHEN (false)",
+      "comando": "test:unit"
+    },
+    {
+      "id": "K14",
+      "regla": "Avisos: una cuenta que deja de estar activa o cambia de rol avisa",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
+      "buscar": "FOR EACH ROW WHEN ((OLD.estado = 'activa' AND NEW.estado <> 'activa') OR OLD.rol IS DISTINCT FROM NEW.rol)",
+      "reemplazo": "FOR EACH ROW WHEN (false)",
+      "comando": "test:unit"
+    },
+    {
+      "id": "K15",
+      "regla": "Avisos: borrar un documento avisa (también a quien tenía acceso solo por el espacio)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
+      "buscar": "CREATE TRIGGER documentos_avisar_borrado AFTER DELETE ON documentos\n  FOR EACH ROW EXECUTE",
+      "reemplazo": "CREATE TRIGGER documentos_avisar_borrado AFTER DELETE ON documentos\n  FOR EACH ROW WHEN (false) EXECUTE",
+      "comando": "test:unit"
+    },
+    {
+      "id": "K16",
+      "regla": "Auditoría: una lápida deja de ser objetivo identificable (dentro de eliminar_cuenta)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
+      "buscar": "  UPDATE eventos_seguridad SET objetivo_id = NULL WHERE objetivo_id = NEW.id;",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "K17",
+      "regla": "Auditoría: recurso_id no se reescribe (solo se anonimizan cuentas e IP)",
+      "archivo": "migrations/0022_auditoria_y_avisos.sql",
+      "buscar": "       AND NEW.recurso_id IS NOT DISTINCT FROM OLD.recurso_id\n",
+      "reemplazo": "",
+      "comando": "test:sql"
     }
   ]
 }

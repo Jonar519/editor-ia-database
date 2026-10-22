@@ -96,6 +96,7 @@ Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
 | `0020_purga_invitaciones` | la retención borra también las cuentas pendientes 7 días después de que venció su invitación (decisión 7 del bloque G) |
 | `0021_compactar_documento` | `compactar_documento()`: escribe el estado Yjs y borra el log hasta un id en la misma llamada; la app ya no puede borrar actualizaciones por su cuenta (bloque K1, ADR 0003 del backend) |
 | `0022_auditoria_y_avisos` | auditoría de permisos (`objetivo_id`, `recurso_id` como id y nueve tipos) y avisos `cuaderno_permisos`, con solo ids, de todo lo que quita acceso: sesiones, cuentas y documentos (bloque K2; mutaciones K13–K17) |
+| `0023_ia_indexado_y_busqueda` | presupuesto diario del indexado automático por espacio (`uso_ia_indexado_diario`), `buscar_fragmentos` por modelo con umbral de distancia y tope por documento (la de 4 parámetros se conserva por compatibilidad), y retención de 400 días del uso de IA en `purgar_retencion()`, que pasa a ser su definición vigente (bloque P2; mutaciones P01–P10, G17 y G19–G23 movidas aquí) |
 
 ## Rol de aplicación (privilegios mínimos)
 

@@ -94,11 +94,12 @@ CREATE OR REPLACE FUNCTION prueba.vector_base(k integer) RETURNS vector LANGUAGE
           FROM generate_series(1, 1024) AS i)::vector
 $$;
 
-CREATE OR REPLACE FUNCTION prueba.embedding(p_documento uuid, p_indexa uuid, p_k integer, p_fragmento integer DEFAULT 0)
+CREATE OR REPLACE FUNCTION prueba.embedding(p_documento uuid, p_indexa uuid, p_k integer, p_fragmento integer DEFAULT 0,
+                                            p_modelo text DEFAULT 'mock-1024', p_vector vector DEFAULT NULL)
 RETURNS uuid LANGUAGE sql AS $$
   INSERT INTO embeddings (documento_id, espacio_id, fragmento, texto, hash_texto, modelo, embedding, indexado_por)
-  SELECT id, espacio_id, p_fragmento, 'Fragmento ficticio ' || p_k, sha256(p_k::text::bytea), 'mock-1024',
-         prueba.vector_base(p_k), p_indexa
+  SELECT id, espacio_id, p_fragmento, 'Fragmento ficticio ' || p_k, sha256(p_k::text::bytea), p_modelo,
+         coalesce(p_vector, prueba.vector_base(p_k)), p_indexa
   FROM documentos WHERE id = p_documento
   RETURNING id
 $$;

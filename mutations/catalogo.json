@@ -1116,8 +1116,8 @@
     },
     {
       "id": "G17",
-      "regla": "Retención: una sesión revocada cuenta desde su revocación (definición vigente: 0020)",
-      "archivo": "migrations/0020_purga_invitaciones.sql",
+      "regla": "Retención: una sesión revocada cuenta desde su revocación (definición vigente: 0023)",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
       "buscar": "WHERE least(coalesce(revocada_en, 'infinity'::timestamptz), expira_en) <",
       "reemplazo": "WHERE expira_en <",
       "comando": "test:sql"
@@ -1132,16 +1132,16 @@
     },
     {
       "id": "G19",
-      "regla": "Retención: correos simulados solo cuando vencen (definición vigente: 0020)",
-      "archivo": "migrations/0020_purga_invitaciones.sql",
+      "regla": "Retención: correos simulados solo cuando vencen (definición vigente: 0023)",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
       "buscar": "DELETE FROM correos_simulados WHERE expira_en <= now();",
       "reemplazo": "DELETE FROM correos_simulados WHERE creado_en <= now();",
       "comando": "test:sql"
     },
     {
       "id": "G20",
-      "regla": "Retención: eventos de seguridad de más de 180 días (definición vigente: 0020)",
-      "archivo": "migrations/0020_purga_invitaciones.sql",
+      "regla": "Retención: eventos de seguridad de más de 180 días (definición vigente: 0023)",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
       "buscar": "  DELETE FROM eventos_seguridad WHERE creado_en < now() - retencion_eventos_seguridad();\n",
       "reemplazo": "",
       "comando": "test:sql"
@@ -1149,7 +1149,7 @@
     {
       "id": "G21",
       "regla": "Retención: se borran las cuentas pendientes con la invitación vencida",
-      "archivo": "migrations/0020_purga_invitaciones.sql",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
       "buscar": "  DELETE FROM usuarios u\n  WHERE u.estado = 'pendiente'\n",
       "reemplazo": "  PERFORM 1 FROM usuarios u\n  WHERE u.estado = 'pendiente'\n",
       "comando": "test:sql"
@@ -1157,7 +1157,7 @@
     {
       "id": "G22",
       "regla": "Retención: una invitación vencida hace menos de 7 días conserva su cuenta",
-      "archivo": "migrations/0020_purga_invitaciones.sql",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
       "buscar": "WHERE i.usuario_id = u.id AND i.expira_en >= now() - retencion_invitaciones_vencidas()",
       "reemplazo": "WHERE i.usuario_id = u.id AND i.expira_en >= now()",
       "comando": "test:sql"
@@ -1165,7 +1165,7 @@
     {
       "id": "G23",
       "regla": "Retención: una cuenta pendiente recién creada no se toca",
-      "archivo": "migrations/0020_purga_invitaciones.sql",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
       "buscar": "    AND u.creado_en < now() - retencion_invitaciones_vencidas()\n",
       "reemplazo": "",
       "comando": "test:sql"
@@ -1304,6 +1304,86 @@
       "regla": "Auditoría: recurso_id no se reescribe (solo se anonimizan cuentas e IP)",
       "archivo": "migrations/0022_auditoria_y_avisos.sql",
       "buscar": "       AND NEW.recurso_id IS NOT DISTINCT FROM OLD.recurso_id\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "P01",
+      "regla": "Búsqueda (0023): solo vectores del modelo pedido",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
+      "buscar": "      AND e.modelo = p_modelo\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "P02",
+      "regla": "Búsqueda (0023): el umbral de distancia deja fuera lo lejano",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
+      "buscar": "  WHERE x.distancia <= p_distancia_maxima\n",
+      "reemplazo": "  WHERE true\n",
+      "comando": "test:sql"
+    },
+    {
+      "id": "P03",
+      "regla": "Búsqueda (0023): como máximo N fragmentos por documento",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
+      "buscar": "    AND x.orden <= greatest(p_por_documento, 1)\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "P04",
+      "regla": "Búsqueda (0023): AISLAMIENTO por el acceso de hoy de quien busca",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
+      "buscar": "      AND rol_efectivo_documento(p_usuario, e.documento_id) IS NOT NULL\n  ) AS x",
+      "reemplazo": "  ) AS x",
+      "comando": "test:sql"
+    },
+    {
+      "id": "P05",
+      "regla": "Retención: el uso de IA se guarda 400 días",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
+      "buscar": "SELECT interval '400 days'",
+      "reemplazo": "SELECT interval '399 days'",
+      "comando": "test:sql"
+    },
+    {
+      "id": "P06",
+      "regla": "Retención: se purga uso_ia_diario",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
+      "buscar": "  DELETE FROM uso_ia_diario WHERE dia < (now() AT TIME ZONE 'UTC')::date - retencion_uso_ia();\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "P07",
+      "regla": "Retención: se purga uso_ia_indexado_diario",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
+      "buscar": "  DELETE FROM uso_ia_indexado_diario WHERE dia < (now() AT TIME ZONE 'UTC')::date - retencion_uso_ia();\n",
+      "reemplazo": "",
+      "comando": "test:sql"
+    },
+    {
+      "id": "P08",
+      "regla": "Presupuesto de indexado: los tokens nunca son negativos",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
+      "buscar": "  PRIMARY KEY (espacio_id, dia),\n  CONSTRAINT uso_ia_indexado_tokens_no_negativos CHECK (tokens >= 0)\n",
+      "reemplazo": "  PRIMARY KEY (espacio_id, dia)\n",
+      "comando": "test:sql"
+    },
+    {
+      "id": "P09",
+      "regla": "Presupuesto de indexado: se va en cascada con el espacio",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
+      "buscar": "REFERENCES espacios (id) ON DELETE CASCADE,",
+      "reemplazo": "REFERENCES espacios (id),",
+      "comando": "test:sql"
+    },
+    {
+      "id": "P10",
+      "regla": "Presupuesto de indexado: la app tiene sus privilegios (tabla nueva con GRANT explícito)",
+      "archivo": "migrations/0023_ia_indexado_y_busqueda.sql",
+      "buscar": "GRANT SELECT, INSERT, UPDATE, DELETE ON uso_ia_indexado_diario TO cuaderno_app;\n",
       "reemplazo": "",
       "comando": "test:sql"
     }

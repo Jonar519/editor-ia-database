@@ -108,5 +108,6 @@ BEGIN
   INSERT INTO eventos_seguridad (tipo, usuario_id) VALUES ('inicio_sesion', ana);
   PERFORM prueba.afirmar_igual(
     (SELECT string_agg(tabla || '=' || borradas, ',' ORDER BY tabla) FROM purgar_retencion()),
-    'cambios_correo=0,correos_simulados=0,cuentas_pendientes=0,eventos_seguridad=0,sesiones=0,tokens_recuperacion=0', 'nada que borrar');
+    'cambios_correo=0,correos_simulados=0,cuentas_pendientes=0,eventos_seguridad=0,sesiones=0,tokens_recuperacion=0,uso_ia_diario=0,uso_ia_indexado_diario=0',
+    'nada que borrar (con los pasos de 0020 y 0023)');
 END $$;

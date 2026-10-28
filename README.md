@@ -123,10 +123,7 @@ Las pruebas `tests/sql/0012_rol_aplicacion.test.sql` y `0021_compactar_documento
 
 `db-up.bat` habilita el LOGIN del rol y le pone la contraseña de `.env` (`scripts/usuario-app.mjs`). Los roles son de todo el servidor, no de una base, así que este paso no toca tablas ni datos.
 
-Cada regla, con su prueba y su mutación, está documentada en dos archivos:
-
-- [docs/esquema-identidad.md](docs/esquema-identidad.md) (migraciones 0002–0007)
-- [docs/esquema-dominio.md](docs/esquema-dominio.md) (migraciones 0008–0011 y 0021)
+Cada regla, con dónde se aplica (restricción, trigger, rol o API), su prueba y su mutación, está en el [modelo de dominio](docs/modelo-dominio.md) (migraciones 0001–0023). Ahí también están los contextos, los agregados, el diagrama ER y el glosario. Reúne lo que antes estaba en `esquema-identidad.md` y `esquema-dominio.md`.
 
 ## Pruebas
 

@@ -10,6 +10,23 @@ Contiene:
 
 El backend (`editor-ia-backend`) usa este esquema solo como cliente, mediante Prisma.
 
+> Visión general del proyecto y tabla "cómo demostrar cada tema": [README general](https://github.com/Jonar519/editor-ia-backend/blob/main/docs/README-general.md), en el repo del backend.
+
+## Estado
+
+Al cierre de R8 (28-10-2026), el esquema está completo para el alcance del proyecto: **23 migraciones** (0001–0023), con identidad, contenido colaborativo, IA y retención.
+
+- El bloque R no agregó migraciones; en R5 se reunió el [modelo de dominio](docs/modelo-dominio.md).
+- Si hiciera falta otra migración antes de la entrega, se pregunta antes de escribirla.
+
+## Documentación
+
+| Documento | Qué tiene |
+|---|---|
+| [docs/modelo-dominio.md](docs/modelo-dominio.md) | Contextos, agregados, diagrama ER, glosario y cada regla con dónde se aplica, su prueba y su mutación |
+| [migrations/README.md](migrations/README.md) | Reglas de las migraciones |
+| [docs/demo-A.md](docs/demo-A.md), [docs/demo-B.md](docs/demo-B.md), [docs/demo-C.md](docs/demo-C.md) | Pasos de demostración para cmd.exe de los bloques A, B y C. Lo de la base de los bloques D a K1 se demuestra en las demos del backend. |
+
 ## Requisitos
 
 - Docker Desktop (motor Linux)
@@ -30,7 +47,7 @@ No hace falta instalar `psql` ni `gitleaks`: corren en Docker.
 | `cuaderno_test` | Pruebas. Se recrea desde cero en cada corrida. |
 | `cuaderno_*_test` | Bases temporales de las pruebas de integración. Se borran al terminar. |
 
-Bases lógicas de Redis: 0 = desarrollo, 1 = pruebas, 2 = E2E.
+Bases lógicas de Redis: 0 = desarrollo, 1 = pruebas, 2 = E2E y pruebas de carga.
 
 ## Puesta en marcha (cmd.exe)
 

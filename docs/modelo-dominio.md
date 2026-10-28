@@ -320,7 +320,7 @@ Las invitaciones usan el mismo mecanismo al revés (`'pendiente'`). Activar la c
 | Códigos de respaldo ligados al MFA (transitivo) | Restricción: FK a `mfa_totp` | sql/0006 | B11 |
 | Inscripción MFA previa solo para admin pendiente, de ESA invitación | Trigger y restricciones (0014): solo admin; CHECK pendiente; FK compuesta a la invitación. La FK a la cuenta pendiente es **equivalente**, porque la cadena invitación → cuenta pendiente ya lo garantiza | sql/0014 | F01, F03, F05; F04 (equiv.) |
 
-En `tokens_refresco` y `codigos_respaldo` no se repite el CHECK + FK a `usuarios` a propósito: la cadena ya lo impide, y la mutación sería equivalente.
+En `tokens_refresco` y `codigos_respaldo` no se repite el CHECK + FK a `usuarios` a propósito: la cadena ya lo impide, y la mutación sería equivalente. Por la misma razón el avatar no tiene un CHECK aparte para la lista de tipos: el de la firma ya solo admite `image/jpeg` o `image/png`.
 
 ### Identidad: tokens, sesiones y MFA
 
@@ -444,6 +444,8 @@ La primera versión parte de 32 bytes en cero.
 | La app solo lee `schema_migrations` | Rol (0012) | sql/0012 | D03 |
 | La app no tiene atributos privilegiados, no desactiva triggers, no cambia el esquema ni vacía tablas | Rol (0012); API: producción aborta con privilegios de más (back S22–S24) | sql/0012 | — (caso SQL; la mutación está en el backend) |
 | Toda tabla tiene privilegios definidos para la app (una tabla nueva sin `GRANT` falla) | Rol (0012) | sql/0012 | D04 |
+
+**La retención no borra los refresh usados de una sesión viva:** son los que permiten detectar la reutilización de uno robado. Se van en cascada cuando la retención borra su sesión.
 
 **Sin documentos huérfanos, por construcción.** Todo documento tiene exactamente un propietario, revisado al `COMMIT`. El propietario es miembro del espacio, y solo una cuenta activa puede ser miembro. Por eso una lápida no puede ser propietaria de nada. El historial de otros documentos sigue apuntando al id de la lápida, que no cambia: la cadena de hash se sigue verificando (prueba de sql/0018).
 

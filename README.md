@@ -1,151 +1,198 @@
-# editor-ia-database
+# editor-ia-database: la base de datos de Cuaderno
 
-Esquema de base de datos de **Cuaderno**, un editor colaborativo de documentación técnica con IA.
+Este repositorio es la **única fuente de verdad** del esquema de PostgreSQL de **Cuaderno**: las
+migraciones SQL numeradas, el usuario de la aplicación con privilegios mínimos, las pruebas SQL y las
+herramientas para levantar los servicios locales. El backend solo lo consume. La **guía completa para
+evaluar el proyecto** (acceso, roles y la prueba de cada función paso a paso) está en el README
+principal, en [editor-ia-backend](https://github.com/Jonar519/editor-ia-backend#readme).
 
-Contiene:
+## Contenido
 
-- las migraciones SQL puras y numeradas (PostgreSQL 16 + pgvector),
-- las pruebas SQL y las pruebas de las herramientas,
-- los scripts para levantar los servicios locales.
+1. [Qué es](#1-qué-es)
+2. [Cómo funciona](#2-cómo-funciona)
+3. [Tecnologías](#3-tecnologías)
+4. [Qué se necesita](#4-qué-se-necesita)
+5. [Acceso y roles](#5-acceso-y-roles)
+6. [Guía de pruebas de la base](#6-guía-de-pruebas-de-la-base)
+7. [Pruebas automatizadas](#7-pruebas-automatizadas)
+8. [Limitaciones y decisiones de diseño](#8-limitaciones-y-decisiones-de-diseño)
+9. [Solución de problemas](#9-solución-de-problemas)
+10. [Estructura del repositorio](#10-estructura-del-repositorio)
+11. [Glosario](#11-glosario)
 
-El backend (`editor-ia-backend`) usa este esquema solo como cliente, mediante Prisma.
+## 1. Qué es
 
-> Visión general del proyecto y tabla "cómo demostrar cada tema": [README general](https://github.com/Jonar519/editor-ia-backend/blob/main/docs/README-general.md), en el repo del backend.
+La base guarda las cuentas y su seguridad (invitaciones, sesiones, verificación en dos pasos,
+auditoría), los espacios y documentos con sus permisos, el contenido colaborativo (cambios de Yjs,
+versiones encadenadas por hash, comentarios), los embeddings de la búsqueda por significado y el uso
+diario de la IA.
 
-## Estado
+Además **protege las reglas por sí misma**: un espacio tiene un solo propietario, una cuenta de
+Lectura no puede tener un rol mayor en ningún espacio, las versiones solo se insertan (nunca se
+modifican) y la búsqueda solo devuelve fragmentos del espacio pedido y de documentos con acceso. El
+backend se conecta con un usuario (`cuaderno_app`) que no es dueño de las tablas: no puede desactivar
+triggers, cambiar el esquema ni reescribir el historial.
 
-Al cierre de R8 (28-10-2026), el esquema está completo para el alcance del proyecto: **23 migraciones** (0001–0023), con identidad, contenido colaborativo, IA y retención.
+## 2. Cómo funciona
 
-- El bloque R no agregó migraciones; en R5 se reunió el [modelo de dominio](docs/modelo-dominio.md).
-- Si hiciera falta otra migración antes de la entrega, se pregunta antes de escribirla.
+- **23 migraciones** (`migrations/0001_…sql` a `0023_…sql`), cada una en una transacción junto con su
+  registro y su checksum en `schema_migrations`. Una migración aplicada no se edita.
+- **Dos usuarios de base:** `cuaderno` (dueño de las tablas, solo para migraciones y pruebas) y
+  `cuaderno_app` (el único con el que se conecta el backend).
+- **Avisos en vivo:** cuando cambia algo que quita acceso (miembros, roles, sesiones, cuentas), la base
+  emite un `NOTIFY` en el canal `cuaderno_permisos`, con solo ids, y el backend corta las conexiones
+  afectadas.
+- **Funciones de la base** para lo crítico: verificar la cadena de versiones, compactar el log de Yjs,
+  eliminar una cuenta (lápida), buscar fragmentos y purgar por retención.
 
-## Documentación
+```mermaid
+erDiagram
+  USUARIOS ||--o{ INVITACIONES : "recibe"
+  USUARIOS ||--o{ SESIONES : "abre"
+  USUARIOS ||--o{ MIEMBROS_ESPACIO : "participa"
+  ESPACIOS ||--o{ MIEMBROS_ESPACIO : "tiene"
+  ESPACIOS ||--o{ DOCUMENTOS : "contiene"
+  DOCUMENTOS ||--o{ PERMISOS_DOCUMENTO : "comparte"
+  DOCUMENTOS ||--o{ ACTUALIZACIONES_DOCUMENTO : "cambios Yjs"
+  DOCUMENTOS ||--o{ VERSIONES : "historial con hash"
+  DOCUMENTOS ||--o{ COMENTARIOS : "anota"
+  DOCUMENTOS ||--o{ EMBEDDINGS : "fragmentos para la búsqueda"
+```
 
-| Documento | Qué tiene |
-|---|---|
-| [docs/modelo-dominio.md](docs/modelo-dominio.md) | Contextos, agregados, diagrama ER, glosario y cada regla con dónde se aplica, su prueba y su mutación |
-| [migrations/README.md](migrations/README.md) | Reglas de las migraciones |
-| [docs/demo-A.md](docs/demo-A.md), [docs/demo-B.md](docs/demo-B.md), [docs/demo-C.md](docs/demo-C.md) | Pasos de demostración para cmd.exe de los bloques A, B y C. Lo de la base de los bloques D a K1 se demuestra en las demos del backend. |
+El modelo completo (contextos, agregados, diagrama entidad-relación y cada regla con su prueba y su
+mutación) está en [docs/modelo-dominio.md](docs/modelo-dominio.md); el contenido de cada migración, en
+la [referencia técnica](docs/referencia-tecnica.md#esquema).
 
-## Requisitos
+## 3. Tecnologías
 
-- Docker Desktop (motor Linux)
-- Node.js 24 o superior
+| Tecnología                       | Versión                                 | Para qué se usa                                                    | Por qué se eligió                                                                                     |
+| -------------------------------- | --------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| **PostgreSQL**                   | 16 (imagen `pgvector/pgvector:pg16`)    | Base de datos                                                      | Restricciones, exclusiones, triggers, funciones y `NOTIFY` para que las reglas no dependan del backend. |
+| **pgvector** · **citext**        | extensiones                             | Embeddings de 1024 dimensiones · correos sin distinguir mayúsculas | Vectores en la misma base y correos únicos sin trucos.                                                |
+| **Redis**                        | 7 (imagen `redis:7-alpine`)             | Lo usa el backend; aquí solo se levanta el contenedor               | El mismo `docker-compose.yml` levanta todo lo de desarrollo.                                          |
+| **Node.js** + **pg**             | 24 o superior · 8.23.1                  | Runner de migraciones, pruebas SQL, huella y scripts               | Sin `psql` instalado: todo corre con Node y Docker.                                                   |
+| **Vitest** · **TypeScript** · **ESLint** | 5.0.4 · 7.0.2 · 10.12.0         | Pruebas de las herramientas y revisión del código                  | Mismas herramientas que los otros repositorios.                                                       |
+| **Docker Compose**               | —                                       | PostgreSQL (127.0.0.1:5435) y Redis (127.0.0.1:6381)               | Mismo entorno en cualquier equipo; gitleaks también corre en Docker.                                  |
+| **GitHub Actions** · **gitleaks** | —                                      | CI: lint, tipos, pruebas, mutaciones, `npm audit` y secretos       | Cada `push` demuestra que el esquema y sus reglas se cumplen.                                         |
+| **Railway**                      | —                                       | PostgreSQL con pgvector y Redis en producción                      | Mismo proyecto que el API y el servicio de IA.                                                        |
 
-No hace falta instalar `psql` ni `gitleaks`: corren en Docker.
+## 4. Qué se necesita
 
-## Servicios locales
-
-| Servicio | Contenedor | Dirección |
-|---|---|---|
-| PostgreSQL 16 + pgvector | `cuaderno_postgres` | `127.0.0.1:5435` |
-| Redis 7 | `cuaderno_redis` | `127.0.0.1:6381` |
-
-| Base | Para qué |
-|---|---|
-| `cuaderno` | Desarrollo. Las pruebas nunca escriben aquí; la huella solo la lee. |
-| `cuaderno_test` | Pruebas. Se recrea desde cero en cada corrida. |
-| `cuaderno_*_test` | Bases temporales de las pruebas de integración. Se borran al terminar. |
-
-Bases lógicas de Redis: 0 = desarrollo, 1 = pruebas, 2 = E2E y pruebas de carga.
-
-## Puesta en marcha (cmd.exe)
+- **Para evaluar en producción:** nada de este repositorio; solo el navegador (ver
+  [Qué necesita el profesor](https://github.com/Jonar519/editor-ia-backend#4-qué-necesita-el-profesor)).
+- **Para levantar la base en local:** Docker Desktop (motor Linux) encendido y Node.js 24 o superior.
+  No hace falta instalar `psql` ni `gitleaks`. En `cmd.exe`:
 
 ```bat
+cd editor-ia-database
 npm ci
 scripts\db-up.bat
 scripts\db-migrate.bat dev
 ```
 
-`db-up.bat` genera `.env` por sí solo la primera vez, con contraseñas locales aleatorias de 24 bytes, así que el bloque se puede reproducir en cualquier computador sin pasos manuales. Si `.env` ya existe, solo le agrega las variables nuevas que falten; nunca cambia un valor existente.
+Esperado: `db-up` crea `.env` con contraseñas locales aleatorias (o le agrega solo lo que falte, sin
+cambiar nada), levanta `cuaderno_postgres` y `cuaderno_redis` y habilita el login de `cuaderno_app`;
+la migración termina con `Base cuaderno: 23 migraciones aplicadas.` y
+`scripts\db-migrate.bat dev --estado` muestra `23 aplicadas, 0 pendientes`. Las variables se generan
+solas; su forma es, por ejemplo:
 
-**Ojo:** Postgres fija la contraseña cuando crea el volumen. Si borras `.env` pero conservas el volumen, la contraseña nueva no coincidirá. En ese caso tienes dos opciones:
+```ini
+PGHOST=127.0.0.1
+PGPORT=5435
+PGUSER=cuaderno
+CUADERNO_APP_PASSWORD=<generada por db-up>
+```
 
-- recuperar tu `.env` anterior, o
-- recrear la base desde cero con `docker compose down -v`, que **borra los datos locales**.
+Después sigue con el API y el frontend:
+[opción local](https://github.com/Jonar519/editor-ia-backend#b-opción-local-opcional).
 
-## Scripts
+## 5. Acceso y roles
 
-Todos los `.bat` están en `scripts\` y se pueden ejecutar desde cualquier carpeta.
+En la base, los permisos de cuenta son `admin`, `editor` y `lector`, y los roles de espacio
+`propietario`, `editor` y `lector`; una regla de la base impide que el rol en un espacio supere el de
+la cuenta. Cómo se entra a la aplicación, las invitaciones y la verificación en dos pasos:
+[Acceso y roles](https://github.com/Jonar519/editor-ia-backend#5-acceso-y-roles).
 
-| Script | Qué hace |
-|---|---|
-| `env-init.bat` | Crea `.env` con contraseñas locales aleatorias. Si `.env` ya existe, le agrega solo las variables nuevas que falten, sin tocar las existentes. `db-up.bat` lo llama automáticamente. |
-| `db-up.bat` / `db-down.bat` | `db-up.bat` crea o completa `.env`, levanta los contenedores esperando el healthcheck y habilita el LOGIN de `cuaderno_app`. `db-down.bat` detiene los contenedores. Los datos se conservan. |
-| `db-migrate.bat dev\|test [--estado]` | Aplica las migraciones pendientes, o solo muestra su estado. `--estado` usa una conexión de solo lectura. |
-| `db-test.bat [filtro]` | Pruebas Vitest (unitarias e integración) y pruebas SQL. |
-| `db-huella.bat tomar\|comparar <etiqueta>` | Huella de solo lectura de la base de desarrollo: filas por tabla y hash del esquema. |
-| `mutar.bat [id...]` | Pruebas de mutación del catálogo `mutations\catalogo.json`. |
-| `gitleaks.bat` | Busca secretos en todo el historial de git. |
-| `ci.bat` | Corre los mismos pasos que el CI y muestra el código de salida de cada uno. |
+## 6. Guía de pruebas de la base
 
-## Migraciones
+Con la base local levantada (sección 4). Las funciones de la aplicación se prueban con la
+[guía principal](https://github.com/Jonar519/editor-ia-backend#6-guía-de-pruebas-función-por-función).
 
-Las reglas están en [migrations/README.md](migrations/README.md). En resumen:
+| Función                        | Qué hace                                                  | Pasos para probarla                                    | Resultado esperado                                                                                                          |
+| ------------------------------ | --------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Estado de las migraciones      | Muestra lo aplicado y lo pendiente, con una conexión de solo lectura | `scripts\db-migrate.bat dev --estado`        | `Base cuaderno: 23 aplicadas, 0 pendientes.`                                                                                 |
+| Migraciones repetibles         | Aplica solo lo pendiente                                  | `scripts\db-migrate.bat dev` otra vez                  | No aplica nada nuevo.                                                                                                       |
+| Pruebas de la base             | Intentan romper cada regla                                | `scripts\db-test.bat`                                  | Las pruebas de Vitest en verde y `Pruebas SQL: 198 OK, 0 fallidas`.                                                         |
+| Huella de la base de desarrollo | Prueba que las pruebas no tocan tus datos               | `scripts\db-huella.bat tomar antes`, luego `scripts\db-test.bat` y `scripts\db-huella.bat comparar antes` | La huella (filas por tabla y hash del esquema) no cambia.                                    |
+| Mutaciones de una regla        | Rompe una regla y exige que una prueba falle              | `scripts\mutar.bat K01`                                | `DETECTADA` con la primera prueba que falló.                                                                                |
+| Modelo de dominio              | Documenta cada regla con su prueba y su mutación          | Abre [docs/modelo-dominio.md](docs/modelo-dominio.md)  | Contextos, diagrama ER, glosario y reglas.                                                                                 |
 
-- archivos `NNNN_nombre.sql`, consecutivos;
-- cada uno se aplica en una transacción junto con su registro y su checksum;
-- una migración aplicada no se edita.
+Demostraciones paso a paso de los primeros bloques: [docs/demo-A.md](docs/demo-A.md),
+[docs/demo-B.md](docs/demo-B.md) y [docs/demo-C.md](docs/demo-C.md).
 
-## Esquema
+## 7. Pruebas automatizadas
 
-| Migración | Contenido |
-|---|---|
-| `0001_extensiones` | `vector` (pgvector) y `citext` |
-| `0002_usuarios` | cuentas (pendiente → activa → lápida) y funciones genéricas de integridad |
-| `0003_invitaciones` | alta solo por invitación, de un solo uso y 72 h como máximo |
-| `0004_sesiones` | sesiones (IP truncada) y tokens de refresco rotativos |
-| `0005_tokens_cuenta` | recuperación de contraseña (15 min) y cambio de correo (24 h) |
-| `0006_mfa` | TOTP cifrado, anti-replay, códigos de respaldo y "un admin activo tiene MFA" |
-| `0007_correo_simulado_geo` | buzón del correo simulado y rangos IP → ubicación aproximada |
-| `0008_espacios` | espacios de trabajo y miembros (propietario único, techo de rol de cuenta) |
-| `0009_documentos` | documentos, permisos por documento, `rol_efectivo_documento` y aviso `NOTIFY` de permisos |
-| `0010_contenido` | actualizaciones Yjs, versiones de solo inserción con cadena de hash, comentarios y presencia |
-| `0011_ia` | embeddings aislados por espacio y acceso, búsqueda semántica y uso diario de IA |
-| `0012_rol_aplicacion` | rol `cuaderno_app` con privilegios mínimos para el backend |
-| `0013_compatibilidad_prisma` | reglas "uno vigente" como restricciones de exclusión, para que Prisma introspecte bien |
-| `0014_inscripciones_mfa` | secreto MFA de un admin **pendiente**, ligado a su invitación (alternativa D del bloque F) |
-| `0015_eventos_seguridad` | registro de auditoría de solo inserción: tipo, cuenta, IP truncada; solo se anonimiza o se borra por retención (180 días) |
-| `0016_anti_replay_solo_ultimo_paso` | el anti-replay de `mfa_totp` solo se evalúa si el UPDATE toca `ultimo_paso` (corrige un defecto de 0006) |
-| `0017_avatares` | avatar de una cuenta activa: JPEG o PNG con su firma de bytes, 1 MiB y 4096 px como máximo, hash comprobado por la base |
-| `0018_eliminar_cuenta` | `eliminar_cuenta()`: lápida, 409 con documentos o espacios compartidos, borrado de lo que no tiene colaboradores; tipos de evento del bloque G |
-| `0019_retencion` | `purgar_retencion()`: plazos de retención de sesiones, tokens, correos simulados y eventos de seguridad (la llama un job diario del backend) |
-| `0020_purga_invitaciones` | la retención borra también las cuentas pendientes 7 días después de que venció su invitación (decisión 7 del bloque G) |
-| `0021_compactar_documento` | `compactar_documento()`: escribe el estado Yjs y borra el log hasta un id en la misma llamada; la app ya no puede borrar actualizaciones por su cuenta (bloque K1, ADR 0003 del backend) |
-| `0022_auditoria_y_avisos` | auditoría de permisos (`objetivo_id`, `recurso_id` como id y nueve tipos) y avisos `cuaderno_permisos`, con solo ids, de todo lo que quita acceso: sesiones, cuentas y documentos (bloque K2; mutaciones K13–K17) |
-| `0023_ia_indexado_y_busqueda` | presupuesto diario del indexado automático por espacio (`uso_ia_indexado_diario`), `buscar_fragmentos` por modelo con umbral de distancia y tope por documento (la de 4 parámetros se conserva por compatibilidad), y retención de 400 días del uso de IA en `purgar_retencion()`, que pasa a ser su definición vigente (bloque P2; mutaciones P01–P10, G17 y G19–G23 movidas aquí) |
-
-## Rol de aplicación (privilegios mínimos)
-
-Hay dos usuarios de base de datos:
-
-| Usuario | Para qué |
-|---|---|
-| `cuaderno` (`PGUSER`) | Dueño de las tablas. Solo lo usan las migraciones y las pruebas. |
-| `cuaderno_app` (`CUADERNO_APP_PASSWORD`) | El único usuario con el que se conecta el backend. |
-
-Al no ser dueño de las tablas, `cuaderno_app` **no puede**:
-
-- desactivar triggers;
-- cambiar el esquema;
-- hacer `TRUNCATE`;
-- usar `session_replication_role`;
-- escribir en `schema_migrations`;
-- modificar o borrar versiones, ni reescribir actualizaciones Yjs. Esto lo impide por privilegio, además del trigger;
-- borrar actualizaciones Yjs por su cuenta (0021): solo puede compactarlas con `compactar_documento()`, que escribe el estado en la misma llamada.
-
-Las pruebas `tests/sql/0012_rol_aplicacion.test.sql` y `0021_compactar_documento.test.sql` lo intentan una por una.
-
-**`compactar_documento()` es `SECURITY DEFINER`:** corre como el dueño de las tablas. En desarrollo ese dueño (`cuaderno`, de la imagen de Postgres) es superusuario. La función tiene `search_path` fijo y un cuerpo cerrado. En producción el dueño de las tablas debe ser un rol **sin** superusuario.
-
-`db-up.bat` habilita el LOGIN del rol y le pone la contraseña de `.env` (`scripts/usuario-app.mjs`). Los roles son de todo el servidor, no de una base, así que este paso no toca tablas ni datos.
-
-Cada regla, con dónde se aplica (restricción, trigger, rol o API), su prueba y su mutación, está en el [modelo de dominio](docs/modelo-dominio.md) (migraciones 0001–0023). Ahí también están los contextos, los agregados, el diagrama ER y el glosario. Reúne lo que antes estaba en `esquema-identidad.md` y `esquema-dominio.md`.
-
-## Pruebas
-
-- **SQL** (`tests/sql/*.test.sql`): cada caso empieza con `-- @test <nombre>` y corre en su propia transacción, que termina siempre en `ROLLBACK`. Las aserciones son las funciones del esquema `prueba`: `afirmar`, `afirmar_igual` y `afirmar_error` (exige el SQLSTATE exacto). Los apoyos `tests/sql/_*.sql` se cargan antes de las pruebas: primero las aserciones y luego las fábricas de datos ficticios.
-- **Vitest** (`tests/unitarias`, `tests/integracion`): las de integración corren contra Postgres real, en bases temporales `*_test`.
-- **Mutaciones** (`mutations/catalogo.json`): cada regla crítica se rompe a propósito y algún test tiene que fallar. Antes, una corrida base sin mutaciones tiene que pasar; si no pasa, el runner aborta. De cada mutación detectada se muestra como evidencia la primera prueba que falló. Una mutación declarada equivalente se informa aparte y no cuenta como detectada.
+| Comando              | Qué cubre                                                                                                                                       | Resultado esperado                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `scripts\db-test.bat` | 74 pruebas de Vitest (unitarias y de integración contra Postgres real) y **198 pruebas SQL** (cada caso en su transacción con `ROLLBACK`)     | `Tests 74 passed (74)` y `Pruebas SQL: 198 OK, 0 fallidas`. |
+| `scripts\mutar.bat`  | **173 mutaciones**: cada regla crítica rota a propósito; antes, una corrida base sin mutaciones tiene que pasar                                   | `Detectadas 170, sobreviven 0, equivalentes 3` (las equivalentes se informan aparte). |
+| `scripts\ci.bat`     | Lint, typecheck, pruebas, mutaciones, `npm audit` y gitleaks                                                                                     | `RESULTADO: OK`.                                       |
 
 Por seguridad, ninguna operación destructiva acepta un nombre de base que no termine en `_test`.
+
+## 8. Limitaciones y decisiones de diseño
+
+- **`compactar_documento()` es `SECURITY DEFINER`:** corre como el dueño de las tablas. En producción
+  ese dueño debe ser un rol sin superusuario.
+- **La contraseña de PostgreSQL se fija al crear el volumen:** si borras `.env` y conservas el volumen,
+  ya no coincide (ver [Solución de problemas](#9-solución-de-problemas)).
+- **Sin seed de datos de ejemplo:** las cuentas nacen solo por invitación, también en desarrollo
+  (`scripts\invitar.bat` del backend).
+- **La tabla de rangos de IP para la ubicación aproximada empieza vacía:** sin datos, las sesiones
+  aparecen sin ubicación.
+- **Las migraciones no corren solas en producción:** se aplican con el mismo runner antes de desplegar
+  el backend.
+
+## 9. Solución de problemas
+
+| Síntoma                                                     | Qué hacer                                                                                                                                         |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db-up.bat` falla: puerto 5435 o 6381 ocupado               | Otro servicio usa el puerto: detenlo.                                                                                                             |
+| La autenticación falla después de borrar `.env`             | Recupera el `.env` anterior, o recrea la base con `docker compose down -v` (**borra los datos locales**) y vuelve a correr `db-up` y la migración. |
+| Las pruebas dicen que la base no es de pruebas              | A propósito: las operaciones destructivas solo aceptan bases que terminan en `_test`.                                                             |
+| `ABORTADO: las pruebas fallan SIN mutaciones`               | Las mutaciones no miden nada si la base falla: corre `scripts\db-test.bat`, corrige y repite.                                                     |
+| Docker no responde                                          | Enciende Docker Desktop con el motor Linux y espera a que esté listo.                                                                            |
+
+## 10. Estructura del repositorio
+
+```
+editor-ia-database/
+├── migrations/          # 0001 … 0023 y sus reglas (migrations/README.md)
+├── tests/
+│   ├── sql/             # pruebas SQL (*.test.sql) y sus apoyos (_*.sql)
+│   ├── unitarias/       # pruebas de las herramientas
+│   └── integracion/     # pruebas contra Postgres real, en bases *_test temporales
+├── mutations/           # catálogo de mutaciones
+├── scripts/             # db-up, db-down, db-migrate, db-test, db-huella, mutar, gitleaks, ci
+├── docs/
+│   ├── modelo-dominio.md      # contextos, agregados, diagrama ER, glosario y reglas
+│   ├── referencia-tecnica.md  # servicios, scripts, cada migración, usuario de la app y pruebas
+│   └── demo-A/B/C.md          # demostraciones de los primeros bloques
+└── docker-compose.yml   # PostgreSQL 16 + pgvector y Redis 7
+```
+
+## 11. Glosario
+
+| Término                          | Qué significa aquí                                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Migración**                    | Archivo SQL numerado que cambia el esquema; se aplica una vez y queda registrado con su checksum.        |
+| **Privilegios mínimos**          | El usuario de la app solo puede lo que necesita; no es dueño de las tablas.                              |
+| **Trigger**                      | Función que la base ejecuta sola al insertar o cambiar filas.                                            |
+| **SECURITY DEFINER**             | Función que corre con los permisos de su dueño y no de quien la llama.                                   |
+| **NOTIFY**                       | Aviso de PostgreSQL a los procesos que escuchan un canal.                                                |
+| **Lápida**                       | Cuenta eliminada que conserva su id (para la autoría) y pierde sus datos personales.                    |
+| **Cadena de hash**               | Cada versión guarda el hash de la anterior; alterar una rompe la cadena.                                  |
+| **Huella**                       | Resumen de solo lectura (filas por tabla y hash del esquema) para comprobar que algo no cambió.          |
+
+El glosario completo del proyecto está en el
+[README principal](https://github.com/Jonar519/editor-ia-backend#11-glosario).

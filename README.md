@@ -135,7 +135,7 @@ Demostraciones paso a paso de los primeros bloques: [docs/demo-A.md](docs/demo-A
 | Comando              | Qué cubre                                                                                                                                       | Resultado esperado                                     |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | `scripts\db-test.bat` | 74 pruebas de Vitest (unitarias y de integración contra Postgres real) y **198 pruebas SQL** (cada caso en su transacción con `ROLLBACK`)     | `Tests 74 passed (74)` y `Pruebas SQL: 198 OK, 0 fallidas`. |
-| `scripts\mutar.bat`  | **173 mutaciones**: cada regla crítica rota a propósito; antes, una corrida base sin mutaciones tiene que pasar                                   | Todas `DETECTADA`.                                     |
+| `scripts\mutar.bat`  | **173 mutaciones**: cada regla crítica rota a propósito; antes, una corrida base sin mutaciones tiene que pasar                                   | `Detectadas 170, sobreviven 0, equivalentes 3` (las equivalentes se informan aparte). |
 | `scripts\ci.bat`     | Lint, typecheck, pruebas, mutaciones, `npm audit` y gitleaks                                                                                     | `RESULTADO: OK`.                                       |
 
 Por seguridad, ninguna operación destructiva acepta un nombre de base que no termine en `_test`.
